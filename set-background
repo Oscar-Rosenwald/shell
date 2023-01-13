@@ -1,0 +1,41 @@
+#!/bin/bash
+
+function backgroundset () {
+    option="centered"
+    while [ "$1" != "" ]; do
+        case $1 in
+            -h )
+                echo "-u path   Set background to file at PATH"
+                echo "-o option Set background option to OPTION"
+                echo "Background options: none wallpaper centered scaled stretched zoom spanned"
+                echo "(Default option is centered)."
+            ;;
+            -u )
+                shift
+                if [ -z "$1" ]; then
+                    echo "You need to give a uri (path to file)."
+                    return -1
+                fi
+                uri=$( realpath "$1" )
+                if [ ! -f "$uri" ]; then
+                    echo "Invalid path to file."
+                    return -1
+                fi
+                gsettings set org.gnome.desktop.background picture-uri "file://$uri"
+            ;;
+            -o )
+                shift
+                if [ -z $1 ]; then
+                    echo "You need to give a valid option. See -h for selection"
+                    return -1
+                fi
+                option=$1
+            ;;
+            -r )
+                picture=$( gsettings get org.gnome.desktop.background picture-uri )
+                gsettings set org.gnome.desktop.background picture-uri "$picture"
+        esac
+        shift
+    done
+    gsettings set org.gnome.desktop.background picture-options $option
+}

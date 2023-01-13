@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+IFS=$'\n\t'
+
+cd $VAION_PATH
+
+for i in ${@:-$(git grep --name-only "\(___\|~~~\)" -- "mgmt/*.go" "access/*.go" "lib/*.go" "camera/*.go") }; do
+	echocolour "Removing ___ from $i"
+	sed -i ''/___/d'' "$i"
+
+	echocolour "Reverting ~~~ changes"
+	sed -i 's;^\([ \t]*\)// \(.*\)~~~$;\1\2;' "$i"
+done
+
+echocolour "Running goimports"
+# No matter which files we changed, they are changed now, so `git diff` gives us the right names
+git diff --name-only | grep ".go$" | xargs goimports -w
+
+echocolour "Running formatting"
+git diff --name-only | grep ".go$" | xargs gofmt -w 
+
+echocolour "Running gazelle"
+bazel run //:gazelle

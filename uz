@@ -1,0 +1,112 @@
+#!/bin/bash
+
+set -euo pipefail
+IFS=$'\n\t'
+
+debug=false
+fullDebug=false
+case "${1:-empty}" in
+	empty)
+	;;
+	full)
+		fullDebug=true
+		debug=true
+		;;
+	*)
+		debug=true
+		;;
+esac
+
+startDir=`pwd`
+cd ~/Downloads
+
+# This effectively checks if the zip files exist. Requires pipefail.
+
+logsFilePrefix="logs_cluster_"
+if ! compgen -G "$logsFilePrefix"* > /dev/null; then
+	echo "Cluster log doesn't exist. Use node logs."
+	logsFilePrefix="logs_node_"
+	node=`ls -1 "$logsFilePrefix"* | head -n 1 | sed 's/'"$logsFilePrefix"'\(\([a-z]\|[0-9]\|\-\)*\).*/\1/'`
+	node=/"$node"
+fi
+
+fullDate=`ls -1 "$logsFilePrefix"* | head -n 1 | sed 's/'"$logsFilePrefix"'[^.]*\([0-9]\{2\}.*\).zip/\1/'`
+if compgen -G "ava_ui_logs*" > /dev/null; then
+	deploymentName=`ls -1 ava_ui_logs* | head -n 1 | sed 's/ava_ui_logs_\(.*\)\..\{3\}\.aware.*/\1/'`
+else
+	echocolour "Unknown VMS. Give me a name (empty = <unknown>):"
+	read name
+	if [[ "$name" != "" ]]; then
+		deploymentName=$name
+	else
+		deploymentName="<unknown>"
+	fi
+fi
+
+year=`echo $fullDate | cut -d. -f 1`
+month=`echo $fullDate | cut -d. -f 2`
+day=`echo $fullDate | cut -d. -f 3`
+hour=`echo $fullDate | cut -d. -f 4`
+minute=`echo $fullDate | cut -d. -f 5`
+
+logsName="$deploymentName"_"$day.$month.$year"
+
+if [[ $debug = true ]]; then
+cat <<EOF
+Unpacking logs.
+logs file prefix:       $logsFilePrefix
+deployment name:        $deploymentName${node:-}
+logs name:              $logsName
+year:                   $year
+month:                  $month
+day:                    $day
+hour:                   $hour
+minute:                 $minute
+EOF
+echo
+if [[ "$fullDebug" = true ]]; then
+	exit 0
+fi
+fi
+
+# Handle log backups
+if [[ -d "./logs_$logsName" ]]; then
+	[[ $debug = true ]] && echocolour "This log already exists. Moving it to backup."
+	logsNum=`ls -1d */ | grep -c "^$logsName"__"backup" || true`
+	# The `|| true` is here so grep doesn't return 1 when no match is found (which would terminate the script) 
+	mv "logs_$logsName" "$logsName"__"backup_$logsNum" # Starts at 0, so will always work
+fi
+
+[[ $debug = true ]] && echocolour "Unzipping logs"
+unzip logs_*.zip -d "logs_$logsName" #1>/dev/null
+
+cd "logs_$logsName"/nodes
+
+[[ $debug = true ]] && echocolour "unzipping nodes"
+# Unzip nodes
+for f in *.zip; do
+	where=$(echo "$f" | sed 's/.zip//')
+	unzip "$f" -d $where || true #1>/dev/null || true
+	rm "$f"
+done
+
+# Store download information
+cd ~/Downloads
+echocolour "Writing download info"
+cat > logs_$logsName/download_info <<EOF
+This log is from deployment:
+$deploymentName${node:-}
+
+It was downloaded at:
+$hour:$minute $day.$month 20$year
+EOF
+
+[[ $debug = true ]] && echocolour "Unpacking UI logs"
+if compgen -G ava*.zip > /dev/null ; then unzip ava*.zip -d logs_$logsName/ui; fi
+
+[[ $debug = true ]] && echocolour "Deleting zips"
+# Remove zips
+cd ~/Downloads
+rm logs_*.zip ava*.zip
+
+cd $startDir

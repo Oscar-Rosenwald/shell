@@ -1,0 +1,203 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+IFT=$'\n\t'
+
+RED='\033[0;31m'
+NC='\033[0m' # No Color
+
+function show_help {
+cat <<EOF
+echo "gg runs a (recursive?) grep search:"
+gg <pattern to match> <folder> [specifications]"
+
+Specifications:
+- t = include test.go files (default is not include)
+- r = don't do recursively (default is recursive grep)
+- i = run grep case sensitive (default is insensitive)
+- q = include mgmt_query files
+- p = include mgmt_pubsub files
+- R = include dbreplication files
+- a = include all files
+- c = don't show colour
+- f = following arguments are all files to exclude unless 'd' or '-' are given later (need at least 1 file after this)
+- d = following arguments are all directories to exclude, unless 'f' or '-' are given later
+- o = If the number of found occurances of the pattern is  manageable, give the user a prompt to open the appropriate file (eliminates the need to copy and paste).
+- - = what follows are extra arguments to give to grep
+
+gg always excludes dbreplication, mgmt_query and mgmt_pubsub, because they are annoying. Always ignore case. The above options can override this behaviour.
+
+Examples:
+
+"gg Jaffa Hatak r bridge \"cargo*\" d engineering - --no-filename"
+translates to
+  -e "${RED}grep -ine Jaffa Hatak/* --color=always --exclude=bridge --exclude=\"cargo*\" --exclude=*test.go --exclude-dir={mgmt_query,mgmt_pubsub,engineering} --no-filename${NC}"
+
+and
+
+"gg infinity stones Tesseract d Thanos t f Sceptor"
+translates to
+  -e "${RED}grep -irne infinity stones --color=always --exclude=Tesseract --exclude=Sceptor --exclude-dir={mgmt_query,mgmt_pubsub,Thanos}${NC}"
+EOF
+exit 0
+}
+
+function open_file {
+	# Make a colourless array now (in order to be opened by the 'em' script).
+	declare -A plainOccurrences=()
+	plainCommand=$(echo "$command" | sed 's/--color=always/--color=never/')
+
+	if [[ "$command" = "$plainCommand" ]]; then
+		for i in "${!occurrences[@]}"; do
+			echocolour "Index $i is being used"
+			plainOccurrences+=(["$i"]="${occurrences[$i]}")
+		done
+	else
+		key=0
+		while IFS=$'\n' read -r line; do
+			key=$(( key + 1 ))
+			plainOccurrences+=(["$key"]="$line")
+		done < <(eval $plainCommand)
+	fi
+
+	# Select and open the file
+	select file in "${occurrences[@]}"; do
+		key=$(find_key "$file")
+		f="${plainOccurrences[$key]}"
+		em "$f" 3 # Open file and line in emacs
+		break # Assume we have picked something sensible and don't need to check.
+	done
+}
+
+what="$1"
+where="$2"
+whereNoDir=""
+whereNoFile=""
+command=""
+
+shift 2
+
+fileMode="fileM" # From now on we're listing files to exclude
+dirMode="dirM" # From now on we're listing directories to exclude
+skipMode="skipM" # Next argument is another command, not a file/directory
+
+currentMode=$fileMode
+useTest=false
+useQuery=false
+usePubsub=false
+useReplication=false
+colourCommand="--color=always"
+recursive="-r"
+ignoreCase="-i"
+openInteractively=false
+
+while [[ "$#" -gt 0 ]]; do
+	lastMode=$currentMode
+	
+	if [[ "$1" = "f" ]]; then # f = not file
+		currentMode=$fileMode
+		shift 1
+	elif [[ "$1" = "-h" ]]; then
+		show_help
+	elif [[ "$1" = "d" ]]; then # d = not directory
+		currentMode=$dirMode
+		shift 1
+	elif [[ "$1" = "r" ]]; then # r = not recursive
+		recursive=""
+		currentMode=$skipMode
+	elif [[ "$1" = "i" ]]; then # i = case sensitive
+		ignoreCase=""
+		currentMode=$skipMode
+	elif [[ "$1" = "c" ]]; then # c = no colour
+		colourCommand="--color=never"
+		currentMode=$skipMode
+	elif [[ "$1" = "t" ]]; then # t = use test
+		useTest=true
+		currentMode=$skipMode
+	elif [[ "$1" = "q" ]]; then # q = use mgmt_query
+		useQuery=true
+		currentMode=$skipMode
+	elif [[ "$1" = "p" ]]; then # p = use pubsub
+		usePubsub=true
+		currentMode=$skipMode
+	elif [[ "$1" = "o" ]]; then # o = open found files by prompt
+		openInteractively=true
+		currentMode=$skipMode
+	elif [[ "$1" = "R" ]]; then # R = use dbreplication
+		useReplication=true
+		currentMode=$skipMode
+	elif [[ "$1" = "a" ]]; then # a = use all
+		useTest=true
+		useQuery=true
+		usePubsub=true
+		useReplication=true
+		currentMode=$skipMode
+	elif [[ "$1" = "-" ]]; then # - = done, rest are different arguments
+		shift 1
+		break
+	fi
+
+	if [[ $currentMode = $fileMode ]]; then
+		whereNoFile+="--exclude=$1 "
+	elif [[ $currentMode = $dirMode ]]; then
+		whereNoDir+=",$1"
+	elif [[ $currentMode = $skipMode ]]; then
+		currentMode=$lastMode	# Return to the previous mode, as skipMode is only this one time
+	fi
+
+	shift 1
+done
+
+# Build the command
+
+if [[ $useTest = false ]]; then
+	whereNoFile+="--exclude=*test.go"
+fi
+if [[ $useQuery = false ]]; then
+	whereNoDir+=",mgmt_query"
+fi
+if [[ $usePubsub = false ]]; then
+	whereNoDir+=",mgmt_pubsub"
+fi
+if [[ $useReplication = false ]]; then
+	whereNoDir+=",dbreplication"
+fi
+
+command="grep $ignoreCase -n $recursive -e \"$what\" $where/* $@ $colourCommand $whereNoFile --exclude-dir={$whereNoDir}"
+
+echo -e "${RED}$command${NC}"
+
+declare -A occurrences=()
+key=0
+
+while IFS=$'\n' read -r line; do
+	key=$(( key + 1 ))
+	occurrences+=(["$key"]="$line")
+done < <(eval $command)
+
+function print {
+	for i in "${occurrences[@]}"; do
+		echo "$i"
+	done
+}
+
+function find_key {
+	searchedFile=$1
+	
+	for i in "${!occurrences[@]}"; do
+		if [[ "$searchedFile" = "${occurrences[$i]}" ]]; then
+			echo "$i"
+			return
+		fi
+	done
+}
+
+if [[ $openInteractively = false ]]; then
+	print
+elif [[ "${#occurrences[@]}" -gt 15 ]]; then
+	print
+	echocolour "Too many occurrences to open interactively"
+else
+	open_file
+fi
+	

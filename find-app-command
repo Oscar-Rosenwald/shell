@@ -1,0 +1,36 @@
+#!/bin/bash
+
+#Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+#The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+#THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE
+
+#check if wmctrl is installed
+if [ ! -n "$(dpkg -s wmctrl 2>/dev/null | grep 'Status: install ok installed')" ]; then
+    echo -e "The package 'wmctrl' must to be installed before to run $(basename $0).\nUse 'sudo apt-get install wmctrl' command to install it."
+    exit
+fi
+
+window_title=$(echo $@ | awk '{print tolower($0)}')
+windows=$(mktemp)
+pids=$(mktemp)
+pid_found=""
+
+wmctrl -l | awk '{$2=$3=""; print $0}' > $windows
+
+cat $windows | while read identity window; do
+    if [[ $(echo $window | awk '{print tolower($0)}') == *$window_title* ]]; then
+        wmctrl -lp | grep -e "$identity.*$window" | awk '{$1=$2=$4=""; print $0}'
+    fi
+done > $pids
+
+while read pid window; do
+    if [ "$pid" != "0" -a "$window" != "Desktop" ]; then
+        echo -e "Application window title:\t$window"
+        echo -e "Command to open from terminal:\t\$ $(ps -o command $pid | tail -n 1)\n"
+        pid_found="$pid"
+    fi
+done < $pids
+
+if [ "$pid_found" = "" ]; then
+    echo "There is no any opened application containing '$@' in the window title."
+fi

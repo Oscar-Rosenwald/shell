@@ -1,0 +1,12 @@
+#!/bin/bash
+
+function updir () {
+    arg=1;
+    if [ "$#" -ne 0 ]; then
+        arg=$1;
+    fi
+
+    for i in $(seq 1 $arg); do
+        cd ..;
+    done
+}

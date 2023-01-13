@@ -1,0 +1,46 @@
+#!/bin/bash
+
+RED='\033[0;31m'
+NC='\033[0m'
+
+if [[ $1 = -h ]]; then
+	echo -e "${RED}logs <file> ([c] [in] <file>)${NC}"
+	echo Give list of strings to exclude/include from the file.
+	echo
+	echo "c  -> toggle inclusion of colour. Default is to give coloured output. Using c once will disable it on strings going forward. Using c again will enable it for the following strings, and so on."
+	echo "in -> include following file. Default is exclude."
+	exit 0
+fi
+
+query="cat $1"
+colour=true
+noGreps=true
+shift 1 # Exclusions from now on
+
+while : ; do
+	line="$1"
+	if [[ "$line" = "" ]]; then
+		break
+	elif [[ "$line" = "c" ]]; then
+		if [[ "$colour" = true ]]; then
+			colour=false
+		else
+			colour=true
+		fi
+	elif [[ "$line" != "in" ]]; then
+		query+=" | grep -v \"$line\""
+		noGreps=false
+	else
+		if [[ "$colour" = true ]]; then
+			query+=" | grep --color=always \"$2\""
+		else
+			query+=" | grep \"$2\""
+		fi
+		noGreps=false
+		shift 1
+	fi
+	shift 1
+done
+
+echo -e "${RED}$query | tail -n 100${NC}"
+(eval "$query") | tail -n 100
