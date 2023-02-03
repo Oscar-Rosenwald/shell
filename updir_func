@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+updir() {
+	arg=${1:-1}
+	for i in $(seq 1 $arg); do
+		cd ..
+	done
+}
+
+export -f updir

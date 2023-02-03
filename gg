@@ -22,7 +22,9 @@ Specifications:
 - c = don't show colour
 - f = following arguments are all files to exclude unless 'd' or '-' are given later (need at least 1 file after this)
 - d = following arguments are all directories to exclude, unless 'f' or '-' are given later
-- o = If the number of found occurances of the pattern is  manageable, give the user a prompt to open the appropriate file (eliminates the need to copy and paste).
+- o = Interactive opening of files. (Prompt interactively if there are a manageable number of files.)
+- l = Maximum lines to allow interactive opening with. Default is 50.
+- k = Keep opening files in Interactive opening until the script is cancelled through Ctrl+C. (DOES NOT WORK!!!)
 - - = what follows are extra arguments to give to grep
 
 gg always excludes dbreplication, mgmt_query and mgmt_pubsub, because they are annoying. Always ignore case. The above options can override this behaviour.
@@ -61,11 +63,16 @@ function open_file {
 	fi
 
 	# Select and open the file
-	select file in "${occurrences[@]}"; do
-		key=$(find_key "$file")
-		f="${plainOccurrences[$key]}"
-		em "$f" 3 # Open file and line in emacs
-		break # Assume we have picked something sensible and don't need to check.
+	while true; do
+		select file in "${occurrences[@]}"; do
+			key=$(find_key "$file")
+			f="${plainOccurrences[$key]}"
+			em "$f" 3 # Open file and line in emacs
+		done
+
+		if [[ $keepOpening = false ]]; then
+			break
+		fi
 	done
 }
 
@@ -90,6 +97,8 @@ colourCommand="--color=always"
 recursive="-r"
 ignoreCase="-i"
 openInteractively=false
+maxLines=50
+keepOpening=false
 
 while [[ "$#" -gt 0 ]]; do
 	lastMode=$currentMode
@@ -99,6 +108,7 @@ while [[ "$#" -gt 0 ]]; do
 		shift 1
 	elif [[ "$1" = "-h" ]]; then
 		show_help
+		exit 0
 	elif [[ "$1" = "d" ]]; then # d = not directory
 		currentMode=$dirMode
 		shift 1
@@ -107,6 +117,10 @@ while [[ "$#" -gt 0 ]]; do
 		currentMode=$skipMode
 	elif [[ "$1" = "i" ]]; then # i = case sensitive
 		ignoreCase=""
+		currentMode=$skipMode
+	elif [[ "$1" = "k" ]]; then # k = keep opening file in interactive opening mode
+		keepOpening=true
+		echocolour "keeping opening"
 		currentMode=$skipMode
 	elif [[ "$1" = "c" ]]; then # c = no colour
 		colourCommand="--color=never"
@@ -120,12 +134,16 @@ while [[ "$#" -gt 0 ]]; do
 	elif [[ "$1" = "p" ]]; then # p = use pubsub
 		usePubsub=true
 		currentMode=$skipMode
-	elif [[ "$1" = "o" ]]; then # o = open found files by prompt
+	elif [[ "$1" = "o" ]]; then # o = don't open found files by prompt
 		openInteractively=true
 		currentMode=$skipMode
 	elif [[ "$1" = "R" ]]; then # R = use dbreplication
 		useReplication=true
 		currentMode=$skipMode
+	elif [[ "$1" = "l" ]]; then # l = set max interactive lines
+		maxLines="$2"
+		currentMode=$skipMode
+		shift 1
 	elif [[ "$1" = "a" ]]; then # a = use all
 		useTest=true
 		useQuery=true
@@ -194,7 +212,7 @@ function find_key {
 
 if [[ $openInteractively = false ]]; then
 	print
-elif [[ "${#occurrences[@]}" -gt 15 ]]; then
+elif [[ "${#occurrences[@]}" -gt $maxLines ]]; then
 	print
 	echocolour "Too many occurrences to open interactively"
 else

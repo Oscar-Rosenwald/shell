@@ -17,11 +17,10 @@ function getUnfoundFile() {
 	local file=$1
 	local  __resultvar=$2
 	local result=""
-	thisDir=`pwd`
 
 	# Find any matches in the code.
 
-	foundFiles=$(find . -maxdepth "$depth" -ipath "$thisDir/*$file")
+	foundFiles=$(find . -maxdepth "$depth" -ipath "*$file")
 
 	if [[ -z "$foundFiles" ]]; then
 		echo "ahoj" > /dev/null	# Here so the last printed thing is nothing.

@@ -17,15 +17,22 @@ case "${1:-empty}" in
 		;;
 esac
 
-startDir=`pwd`
 cd ~/Downloads
 
 # This effectively checks if the zip files exist. Requires pipefail.
 
 logsFilePrefix="logs_cluster_"
 if ! compgen -G "$logsFilePrefix"* > /dev/null; then
-	echo "Cluster log doesn't exist. Use node logs."
-	logsFilePrefix="logs_node_"
+	if compgen -G "logs_node_"* > /dev/null; then
+		echo "Cluster log doesn't exist. Use node logs."
+		logsFilePrefix="logs_node_"
+	elif compgen -G "logs_serverGroup_"* > /dev/null; then
+		echo "Cluster log doesn't exist. Use server group logs."
+		logsFilePrefix="logs_serverGroup_"
+	else
+		echo "No known log name format"
+		exit 1
+	fi
 	node=`ls -1 "$logsFilePrefix"* | head -n 1 | sed 's/'"$logsFilePrefix"'\(\([a-z]\|[0-9]\|\-\)*\).*/\1/'`
 	node=/"$node"
 fi
@@ -109,4 +116,4 @@ if compgen -G ava*.zip > /dev/null ; then unzip ava*.zip -d logs_$logsName/ui; f
 cd ~/Downloads
 rm logs_*.zip ava*.zip
 
-cd $startDir
+# TODO Add log analysis

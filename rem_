@@ -3,15 +3,44 @@
 set -euo pipefail
 IFS=$'\n\t'
 
-cd $VAION_PATH
+# cd $VAION_PATH
 
-for i in ${@:-$(git grep --name-only "\(___\|~~~\)" -- "mgmt/*.go" "access/*.go" "lib/*.go" "camera/*.go") }; do
+function matchesMultiLine___ {
+	file=$1
+	if [[ -z `grep ___{{ $file` ]]; then
+		echo false
+	elif [[ -z `grep ___}} $file` ]]; then
+		echo false
+	else
+		echo true
+	fi
+}
+
+for i in ${@:-$(git grep --name-only "\(___\|~~~\)" -- "go/vms/*.go" \
+					"go/access/*.go" \
+					"go/lib/*.go" \
+					"go/tests/*.go" \
+					"camera/*.go" | grep -v "mgmt/alertservice/alertservice_test.go")}; do
+
+	didSomething=true
+
+	multiLine=$(matchesMultiLine___ $i)
+	if [[ $multiLine = true ]]; then
+		echocolour "Removing ___{{...___}}"
+		sed -i '/___{{/,/___}}/{d}' $i
+	fi
+
 	echocolour "Removing ___ from $i"
 	sed -i ''/___/d'' "$i"
 
 	echocolour "Reverting ~~~ changes"
 	sed -i 's;^\([ \t]*\)// \(.*\)~~~$;\1\2;' "$i"
 done
+
+if [[ -z "${didSomething:-}" ]]; then
+	echocolour "No files were changed"
+	exit 0
+fi
 
 echocolour "Running goimports"
 # No matter which files we changed, they are changed now, so `git diff` gives us the right names
