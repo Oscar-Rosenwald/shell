@@ -3,6 +3,8 @@
 set -euo pipefail
 IFS=$'\n\t'
 
+cd $VAION_PATH
+
 function show_help() {
 cat <<EOF
 Usage: test [-h --help]
@@ -12,16 +14,19 @@ Runs a unit test using bazel test. First argument must be a path to a directory.
 -h, --help              Display this help.
  r, --runs <num>        runs per test (default 1)
  j, --jobs <num>        jobs (default 1)
- f, --filter <name>     filter
+ f, --filter <name>     filter (when starting with '/', the filter is assumed to replace the path after the core test, which does not need to be given again)
  o, --output <output>   test output (default 'errors')
  t, --timeout <time>    test timeout
  R, --race              run with race detection
  a, --all, --no-filter  override filter and run all; used to retain the filter if needed later
  --recursive            run all tests under the directory
  --                     other arguments passed to 'bazel test'
-
-'a' overrides all 'f's, if no 'a' is given, the last f is applied as the filter.
 EOF
+}
+
+function findDir {
+	givenDir=$1
+	find go cloud camera api -type d -path "*$givenDir"
 }
 
 if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
@@ -50,18 +55,23 @@ if [[ "${testDir::1}" = "/" ]]; then
 fi
 # Check directory exists
 if [[ ! -d "$testDir" ]]; then
-	echocolour "Wrong test directory! No directory '$testDir' exist."
-	echo
-	show_help
-	exit 1
+	echocolour "Directory may not exist. Trying to find it..."
+	testDir=$(findDir $testDir)
+
+	if [[ -z "$testDir" ]]; then
+		echocolour "Wrong test directory! No directory '$testDir' exist."
+		echo
+		show_help
+		exit 1
+	fi
 fi
 	
 runsPerTest=1
 jobs=1
+coreTest=""
 filter=""
 race=""
 output="errors"
-noFilter=false
 recursive=false
 timeout=90 # In seconds
 shift
@@ -80,7 +90,16 @@ while [[ "$#" -gt "0" ]]; do
 			shift
 			;;
 		f)
-			filter="$1"
+			if [[ ! "$1" =~ ^/.* ]]; then
+				coreTest=`echo "$1" | cut -f 1 -d /`
+				filter=`echo "$1" | sed "s/$coreTest//"`
+			elif [[ -z $coreTest ]]; then
+				echo "No core test name was given (filter starts with /)"
+				show_help
+				exit 1
+			else
+				filter="$1" # Starts with / - reuse core filter
+			fi
 			shift
 			;;
 		o)
@@ -92,7 +111,8 @@ while [[ "$#" -gt "0" ]]; do
 			shift
 			;;
 		a|--no-filter|--all)
-			noFilter=true
+			filter=""
+			coreTest=""
 			;;
 		R)
 			race="_race"
@@ -108,23 +128,20 @@ while [[ "$#" -gt "0" ]]; do
 			break
 			;;
 		*)
-			echo "Invalid option $opt."
+			echo "Invalid option '$opt'."
 			echo
 			show_help
 			exit 1
 	esac
 done
 
-if [[ $noFilter = true ]]; then
-	filter=""
-fi
 if [[ $recursive = true ]]; then
 	testDir=$testDir/...
 else
 	testDir="$testDir:go_default_test"
 fi
 
-command="TEST_TARGETS=//$testDir EXTRA_TEST_OPTIONS='--test_filter=$filter --runs_per_test=$runsPerTest --jobs=$jobs --test_output=$output --test_timeout=$timeout $@' make main_test$race"
+command="TEST_TARGETS=//$testDir EXTRA_TEST_OPTIONS='--test_filter=$coreTest$filter --runs_per_test=$runsPerTest --jobs=$jobs --test_output=$output --test_timeout=$timeout $@' make main_test$race"
 
 echocolour "$command"
 eval $command

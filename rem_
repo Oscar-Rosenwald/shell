@@ -3,7 +3,7 @@
 set -euo pipefail
 IFS=$'\n\t'
 
-# cd $VAION_PATH
+cd $VAION_PATH
 
 function matchesMultiLine___ {
 	file=$1
@@ -20,7 +20,7 @@ for i in ${@:-$(git grep --name-only "\(___\|~~~\)" -- "go/vms/*.go" \
 					"go/access/*.go" \
 					"go/lib/*.go" \
 					"go/tests/*.go" \
-					"camera/*.go" | grep -v "mgmt/alertservice/alertservice_test.go")}; do
+					"go/camera/*.go" | grep -v "mgmt/alertservice/alertservice_test.go")}; do
 
 	didSomething=true
 

@@ -10,7 +10,7 @@ fi
 
 line=""
 file="${1:-/home/cyril/Private/bugs.org}"
-depth="${2:-3}"
+depth="${2:-5}"
 
 # To find the file if the name is ambiguous.
 function getUnfoundFile() {

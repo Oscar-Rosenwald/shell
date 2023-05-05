@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+IFS=$'\n\t'
+
+
+stderrToVar() {
+  local command
+  local -n var="$1"
+  shift
+  command=("$@")
+  { var="$( { "${command[@]}" ; } 2>&1 1>&9 9>&- )"; } 9>&1
+}
+
+
+
+port="$1"
+
+results="$(stderrToVar error sudo lsof -i -P -n)"
+
+head -n 1 <<< "$results"
+grep "$port" <<< "$results" | grep LISTEN
+
+if [[ -n "${error:-}" ]]; then
+cat <<EOF
+
+=============================
+ERRORS
+
+$error
+EOF
+
+fi

@@ -9,48 +9,44 @@ set -euo pipefail
 # - Pipeline: Task is pushed, but not merged
 # - Long-term: Is continuously being used by a large task or a task long in approval
 
-function __printHelp() {
-	echo "b [-un] <branch name> [OPTIONS]..."
-	echo "list/edit branch usage"
-	echo
-
-	echo "-n  Add new branch and create it. Default state is 'reserved'"
-	echo "-u  Update existing branch with following OPTIONS"
-	echo
-
-	echo "-s  Update state to one of 'free reserved active pipeline long-term'"
-	echo "-t  Update the task this branch is used for"
-	echo "-dt Delete the task - leave it blank"
-	echo
-
-	echo "Simply writing the branch name will show usage of that branch"
-}
-
 file=~/Private/branches.csv
-
 options=("free" "reserved" "active" "pipeline" "long-term")
+currentBranch=$(git branch --list | grep "\*" | sed 's/\* //')
+whatToDo=listAll  # listAll / list / free / update / add
+newStatus=
+newTask=
+RESET=reset
 
-function __printError() {
-	kindOfError="$1"
-	shift 1
-	case "$kindOfError" in
-		0)
-			# Wrong number of arguments
-		;;
-		1)
-			echo "Option '$option' is not valid. Use 'free | reserved | active | pipeline | long-term'"
-			;;
-	esac	
+function __printHelp() {
+cat <<EOF
+THESE INSTRUCTIONS ARE AS OF NOW INCORRECT, AND WILL APPLY ONCE THE SCRIPT IS IMPROVED
+b 
+  [-n] <branch name>
+  [-dt] [branch name]
+  [branch name] [OPTIONS]...
+
+list/edit branch usage
+
+-n  Add new branch and create it. Default state is 'reserved'
+-dt Delete the task - leave it blank, and set status to 'free'
+
+-s  Update state to one of 'free reserved active pipeline long-term'
+-t  Update the task this branch is used for
+
+Simply writing the branch name will show usage of that branch. Leaving branch out defaults to current branch.
+EOF
 }
 
+# 1: status
 function __isValidOption() {
 	option=$1
 	if [[ ! " ${options[*]} " =~ " ${option} " ]]; then
-		__printError 1 "$options"
+		echo "Option '$option' is not valid. Use 'free | reserved | active | pipeline | long-term'"
 		exit 1
 	fi
 }
 
+# 1: branch name
 function __branchExists() {
 	branch="$1"
 
@@ -64,37 +60,8 @@ function __branchExists() {
 	return 1
 }
 
-function __add() {
-	newBranch="$1"				# script will shout if not provided
-	status="reserved"
-	
-	if grep -q "^$newBranch," $file; then
-		echo "$newBranch is already in the file"
-		exit 1
-	fi
-
-	shift 1
-	while test $# -gt 0
-	do
-		case "$1" in
-			-s)
-				shift
-				status="$1"
-				__isValidOption "$1"
-				;;
-			-t)
-				shift
-				task=",$1"
-				;;
-		esac
-		shift
-	done
-
-	echo "$newBranch,$status${task:-}" >> $file
-	git co -b "$newBranch"
-}
-
-function __list() {
+# Uses $file
+function __list {
 	RED=$(tput setaf 1) GREEN=$(tput setaf 2) YELLOW=$(tput setaf 3) PURPLE=$(tput setaf 125)
 	BLUE=$(tput setaf 4) WHITE=$(tput setaf 7)
 	NC=$(tput sgr0)
@@ -136,8 +103,6 @@ function __list() {
 	branchSize=$((branchSize+1))
 	index=$((index-1))
 
-	currentBranch=$(git branch --list | grep "\*" | sed 's/\* //')
-	
 	for i in `seq 0 $index`; do
 		branch="${branch[$i]}"
 		tmpBranchSize="$branchSize"
@@ -149,80 +114,137 @@ function __list() {
 	done
 }
 
-function __update() {
+# 1: Name of new branch
+# Set no status/task. Done separately.
+function __add {
 	branch="$1"
-	__branchExists $branch
+	status="${options[i]}"
 
-	# Check arguments
-	if [[ "$2" != "-dt" ]] &&[[ "$2" != "-s" ]] && [[ "$2" != "-t" ]]; then
-		echo "When updating a branch, use the '-s' or '-t' option, so there is something to actually update"
-		exit 1
-	fi
-	if ! grep -q "^$branch," $file; then
-		echo "Updating branch $branch which doesn't exist"
+	if grep -q "^$branch," $file; then
+		echo "$branch is already in file"
 		exit 1
 	fi
 
-	deleteTask=0
-	status="free"
-
-	shift
-	while test $# -gt 0
-	do
-		case "$1" in
-			-s)
-				shift
-				status="$1"
-				__isValidOption "$1"
-				;;
-			-t)
-				shift
-				task="$1"
-				;;
-			-dt)
-				deleteTask=1
-		esac
-		shift
-	done
-
-	if [[ ! -z "${status+x}" ]]; then
-		sed -i -r 's/^'"$branch"',[^,]+/'"$branch"','"$status"'/' $file
-	fi
-	if [[ ! -z "${task+x}" ]]; then
-		sed -i -r 's/^'"$branch"',([^,]+).*/'"$branch"',\1,'"$task"'/' $file
-	fi
-	if [[ $deleteTask == 1 ]]; then
-		sed -i -r 's/^'"$branch"',([^,]+).*/'"$branch"',\1/' $file
+	if ! __branchExists "$branch"; then
+		git co -b "$branch"
 	fi
 
-	# List this one branch
-	b "$branch"
+	echo "$branch,$status" >> $file
 }
 
-case "${1:-}" in
-	-h)
-		__printHelp
+# 1: $status
+# 2: $task
+# Uses $currentBranch
+# Uess $file
+function __update {
+	status="$1"
+	task="$2"
+
+	if ! grep -q "^$currentBranch," $file; then
+		echo "Updating branch $currentBranch which doesn't exist"
+		exit 1
+	fi
+
+	branchLog=$(grep "^$currentBranch," $file)
+	currentStatus=$(echo $branchLog | cut -d, -f2)
+	currentTask=$(echo $branchLog | cut -d, -f3) # could be empty
+
+	if [[ $status = $RESET ]]; then
+		status=",${options[0]}"
+	elif [[ -z $status ]]; then
+		status=","$currentStatus
+	else
+		status=","$status
+	fi
+
+	if [[ "$task" = $RESET ]]; then
+		task=
+	elif [[ -z "$task" ]]; then
+		task=","$currentTask
+	else
+		task=","$task
+	fi
+
+	sed -i "s/^$currentBranch,$currentStatus.*$/$currentBranch$status$task/" $file
+
+	b $currentBranch
+}
+
+# ========================
+# ========= CODE =========
+# ========================
+
+if [[ -z "${1:-}" ]]; then
+	__list
+	exit 0
+fi
+
+while [[ "$#" -gt 0 ]]; do
+	opt="$1"
+	shift
+
+	case "$opt" in
+		-n)
+			currentBranch="$1"
+			shift
+			;;
+		-h|--help)
+			__printHelp
+			exit 0
+			;;
+		-dt)
+			whatToDo=free
+			;;
+		-s)
+			newStatus="$1"
+			__isValidOption "$newStatus"
+			whatToDo=update
+			shift
+			;;
+		-t)
+			newTask="$1"
+			whatToDo=update
+			shift
+			;;
+		*)
+			currentBranch="$opt"
+			whatToDo=list
+			;;
+	esac
+done
+
+case $whatToDo in
+	listAll)
+		__list
 		;;
-	-n)
-		shift 1
-		__add "$@"
+
+	list)
+		grep "^ *$currentBranch," "$file" > "$file.tmp"
+		file="$file.tmp"
+		__list
+		rm "$file"
 		;;
-	-u)
-		shift 1
-		__update "$@"
+	
+	add)
+		__add "$currentBranch"
+		if [[ ! -z "$newStatus" ]] || [[ ! -z "$newTask" ]]; then
+			__update "$newStatus" "$newTask"
+		fi
+		;;
+
+	free)
+		__update $RESET $RESET
+		;;
+
+	update)
+		if [[ -z "$newStatus" ]] && [[ -z "$newTask" ]]; then
+			__printHelp
+			exit 1
+		fi
+
+		__update "$newStatus" "$newTask"
 		;;
 	*)
-		if [[ $# == 0 ]]; then
-			# List all branches
-			__list
-		else
-			# List only one branch
-			branch="$1"
-			__branchExists $branch
-			grep "^ *$branch," "$file" > "$file.tmp"
-			file="$file.tmp"
-			__list
-			rm "$file"
-		fi
+		echo "Something went very wrong -- check the script"
 		;;
 esac

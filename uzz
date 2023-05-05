@@ -29,6 +29,9 @@ if ! compgen -G "$logsFilePrefix"* > /dev/null; then
 	elif compgen -G "logs_serverGroup_"* > /dev/null; then
 		echo "Cluster log doesn't exist. Use server group logs."
 		logsFilePrefix="logs_serverGroup_"
+	elif compgen -G "log_bundle"* > /dev/null; then
+		echo "Cluster log doesn't exist. Use log bundle logs."
+		logsFilePrefix="log_bundle"
 	else
 		echo "No known log name format"
 		exit 1
@@ -39,7 +42,9 @@ fi
 
 fullDate=`ls -1 "$logsFilePrefix"* | head -n 1 | sed 's/'"$logsFilePrefix"'[^.]*\([0-9]\{2\}.*\).zip/\1/'`
 if compgen -G "ava_ui_logs*" > /dev/null; then
-	deploymentName=`ls -1 ava_ui_logs* | head -n 1 | sed 's/ava_ui_logs_\(.*\)\..\{3\}\.aware.*/\1/'`
+	deploymentName=`ls -1 ava_ui_logs* | head -n 1 | sed 's/ava_ui_logs_\(.*\)\./\1/'`
+elif compgen -G "alta_aware_ui_logs*" > /dev/null; then
+	deploymentName=`ls -1 alta_aware_ui_logs* | head -n 1 | sed 's/alta_aware_ui_logs_\([^.]*\).*/\1/'`
 else
 	echocolour "Unknown VMS. Give me a name (empty = <unknown>):"
 	read name
@@ -85,17 +90,21 @@ if [[ -d "./logs_$logsName" ]]; then
 fi
 
 [[ $debug = true ]] && echocolour "Unzipping logs"
-unzip logs_*.zip -d "logs_$logsName" #1>/dev/null
+unzip "$logsFilePrefix"*.zip -d "logs_$logsName" 2>/dev/null
 
-cd "logs_$logsName"/nodes
-
-[[ $debug = true ]] && echocolour "unzipping nodes"
 # Unzip nodes
-for f in *.zip; do
-	where=$(echo "$f" | sed 's/.zip//')
-	unzip "$f" -d $where || true #1>/dev/null || true
-	rm "$f"
-done
+if [[ -d "logs_$logsName/nodes" ]]; then
+	[[ $debug = true ]] && echocolour "unzipping nodes"
+	cd "logs_$logsName"/nodes
+
+	for f in *.zip; do
+		where=$(echo "$f" | sed 's/.zip//')
+		unzip "$f" -d $where || true #1>/dev/null || true
+		rm "$f"
+	done
+else
+	[[ $debug = true ]] && echocolour "Skipping nodes -> no nodes in log bundle"
+fi
 
 # Store download information
 cd ~/Downloads
@@ -110,10 +119,11 @@ EOF
 
 [[ $debug = true ]] && echocolour "Unpacking UI logs"
 if compgen -G ava*.zip > /dev/null ; then unzip ava*.zip -d logs_$logsName/ui; fi
+if compgen -G alta*.zip > /dev/null; then unzip alta*.zip -d logs_$logsName/ui; fi
 
 [[ $debug = true ]] && echocolour "Deleting zips"
 # Remove zips
 cd ~/Downloads
-rm logs_*.zip ava*.zip
+rm log_bundle.zip logs_*.zip ava*.zip alta*.zip 2>/dev/null
 
 # TODO Add log analysis
