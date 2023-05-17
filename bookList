@@ -1,0 +1,62 @@
+#!/bin/bash
+BOOK_FILE="/home/oscar/Documents/others/code/bookList/.bookList"
+
+function writeBook {
+	echo "\
+Description: "
+	read DESCRIPT
+	echo "\
+Author: "
+	read AUTHOR
+	echo "\
+Year: "
+	read YEAR
+	echo "\
+Pages: "
+	read PAGES
+	echo "##$1##$DESCRIPT##$AUTHOR##$YEAR##$PAGES#" >> $BOOK_FILE	
+}
+
+function bookList() {
+	while true; do
+		echo "Insert book, author, year, or ?? for max. [name (series number)]"
+		read BOOK
+		echo "\
+==========================================="
+		if [ "$BOOK" = "??" ]; then
+			wc -l $BOOK_FILE
+			echo
+			
+		elif echo $BOOK | grep -q "^[0-9]\{4\}$"; then
+			grep -n "##[^#]\+##[^#]\+##[^#]\+##$BOOK" $BOOK_FILE | sed -r 's/([^#]*)##([^#]*)##([^#]*)##([^#]*)##([^#]*)##([^#]*)#/\1\nBOOK:\t\t\2\nDESCRIPTION:\t\3\nAUTHOR:\t\t\4\nYEAR:\t\t\5\nPAGES:\t\t\6\n---------------------\n/g'
+			
+		else
+			LINE=$( grep -in "\(^##[^#]*\b$BOOK\b.*##\)\|\(^##[^#]*##[^#]*##.*$BOOK\)" $BOOK_FILE)
+			
+			if [ "$LINE" != "" ]; then
+				echo $LINE | sed -r 's/ *([^#]*)##([^#]*)##([^#]*)##([^#]*)##([^#]*)##([^#]*)#/\1\nBOOK:\t\t\2\nDESCRIPTION:\t\3\nAUTHOR:\t\t\4\nYEAR:\t\t\5\nPAGES:\t\t\6\n---------------------\n/g'
+				
+			else
+				GoOn=true
+				while [ $GoOn = "true" ]; do
+					echo "Book $BOOK is not on the list. Create? (yes, no) "
+					read ANSWER
+					
+					if [ $ANSWER = yes ]; then
+						GoOn=false
+						writeBook "$BOOK"
+						echo
+						
+					elif [ $ANSWER = no ]; then
+						GoOn=false
+						echo
+						
+					else
+						echo again
+					fi
+				done
+			fi
+		fi
+	done
+}
+

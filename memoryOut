@@ -1,0 +1,4 @@
+#!/bin/bash
+function memoryOut {
+	umount /dev/sda1
+}

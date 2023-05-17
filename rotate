@@ -1,0 +1,10 @@
+#!/bin/env bash
+
+set -euo pipefail
+
+WHERE=/home/oscar/Wallpapers/they-are-coming
+file=$(ls $WHERE | sort -R | tail -1)
+
+option=$(grep "$file" "$WHERE/.options" | cut -d \| -f 2)
+gsettings set org.gnome.desktop.background picture-uri "file://$WHERE/$file"
+gsettings set org.gnome.desktop.background picture-options "$option"
