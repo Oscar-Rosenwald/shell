@@ -5,7 +5,8 @@ set -euo pipefail
 function show_help {
 cat <<EOF
 words_per_scene.sh [-h]
-                   <num-of-scenes> [-n <words-per-scene>] [-d <directory>]
+                   [-p]
+                   <num-of-scenes> [-n <words-per-scene>] [-d <directory>] [-e <extention>]
 
 Show word count breakdown inside directory - display how many words per scene there are, and how many words we went over the limit in total.
 

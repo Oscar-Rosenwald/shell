@@ -1,5 +1,5 @@
 #!/bin/bash
-FILM_FILE=~/Documents/others/code/movieList/.filmList
+FILM_FILE=~/Documents/Code/movieList/.filmList
 FILM=""
 
 function writeFilm {

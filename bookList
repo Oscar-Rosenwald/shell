@@ -1,5 +1,5 @@
 #!/bin/bash
-BOOK_FILE="/home/oscar/Documents/others/code/bookList/.bookList"
+BOOK_FILE="/home/oscar/Documents/Code/bookList/.bookList"
 
 function writeBook {
 	echo "\
