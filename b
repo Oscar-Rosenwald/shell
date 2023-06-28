@@ -16,24 +16,26 @@ whatToDo=listAll  # listAll / list / free / update / add
 newStatus=
 newTask=
 RESET=reset
+useLocalBranch=false
 
 function __printHelp() {
 cat <<EOF
 THESE INSTRUCTIONS ARE AS OF NOW INCORRECT, AND WILL APPLY ONCE THE SCRIPT IS IMPROVED
 b 
   [-n] <branch name>
-  [-dt] [branch name]
+  [-d] [branch name]
   [branch name] [OPTIONS]...
 
 list/edit branch usage
 
 -n  Add new branch and create it. Default state is 'reserved'
--dt Delete the task - leave it blank, and set status to 'free'
+-d  Delete the task - leave it blank, and set status to 'free'
 
 -s  Update state to one of 'free reserved active pipeline long-term'
 -t  Update the task this branch is used for
 
 Simply writing the branch name will show usage of that branch. Leaving branch out defaults to current branch.
+Using `local` as branch name defaults to this one during displaying mode.
 EOF
 }
 
@@ -118,7 +120,7 @@ function __list {
 # Set no status/task. Done separately.
 function __add {
 	branch="$1"
-	status="${options[i]}"
+	status="${options[0]}"
 
 	if grep -q "^$branch," $file; then
 		echo "$branch is already in file"
@@ -186,13 +188,14 @@ while [[ "$#" -gt 0 ]]; do
 	case "$opt" in
 		-n)
 			currentBranch="$1"
+			whatToDo=add
 			shift
 			;;
 		-h|--help)
 			__printHelp
 			exit 0
 			;;
-		-dt)
+		-d)
 			whatToDo=free
 			;;
 		-s)
@@ -207,7 +210,11 @@ while [[ "$#" -gt 0 ]]; do
 			shift
 			;;
 		*)
-			currentBranch="$opt"
+			if [[ "$opt" = "local" ]]; then
+				useLocalBranch=true
+			else
+				currentBranch="$opt"
+			fi
 			whatToDo=list
 			;;
 	esac

@@ -175,7 +175,7 @@ if [[ $useQuery = false ]]; then
 	whereNoDir+=",mgmt_query"
 fi
 if [[ $usePubsub = false ]]; then
-	whereNoDir+=",mgmt_pubsub"
+	whereNoDir+=",mgmt_pubsub,cloud_pubsub"
 fi
 if [[ $useReplication = false ]]; then
 	whereNoDir+=",dbreplication"

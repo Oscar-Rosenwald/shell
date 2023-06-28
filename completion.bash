@@ -20,3 +20,18 @@ _branch_completions()
 	fi
 }
 complete -F _branch_completions b # execute after every 'branch' request
+
+_analyse_logs_completions()
+{
+	wholeIndex=${#COMP_WORDS[@]}
+	checkIndex=$((wholeIndex-2))
+	index=$((wholeIndex-1))
+
+	if [[ "${COMP_WORDS[$checkIndex]}" = "-f" ]]; then
+		COMPREPLY=($(compgen -W "$(ls)" -- "${COMP_WORDS[$index]}"))
+	elif [[ "${COMP_WORDS[$checkIndex]}" = "-w" ]]; then
+		COMPREPLY=($(compgen -W "restarts panics start end first current both full" -- "${COMP_WORDS[$index]}"))
+	fi
+}
+
+complete -F _analyse_logs_completions analyse_logs.sh

@@ -16,25 +16,41 @@ function matchesMultiLine___ {
 	fi
 }
 
+function getFiles {
+	fileOrDir="$1"
+	
+	if [[ -f "$fileOrDir" ]]; then
+		echo "$fileOrDir"
+	else
+		for candidateFile in $(find "$fileOrDir" -type f -path '*.go'); do
+			if [[ ! -z $(grep "___" "$candidateFile") ]]; then
+				echo "$candidateFile"
+			fi
+		done
+	fi
+}
+
 for i in ${@:-$(git grep --name-only "\(___\|~~~\)" -- "go/vms/*.go" \
 					"go/access/*.go" \
 					"go/lib/*.go" \
 					"go/tests/*.go" \
 					"go/camera/*.go" | grep -v "mgmt/alertservice/alertservice_test.go")}; do
 
-	didSomething=true
+	for f in $(getFiles "$i"); do
+		didSomething=true
 
-	multiLine=$(matchesMultiLine___ $i)
-	if [[ $multiLine = true ]]; then
-		echocolour "Removing ___{{...___}}"
-		sed -i '/___{{/,/___}}/{d}' $i
-	fi
+		multiLine=$(matchesMultiLine___ $f)
+		if [[ $multiLine = true ]]; then
+			echocolour "Removing ___{{...___}}"
+			sed -i '/___{{/,/___}}/{d}' $f
+		fi
 
-	echocolour "Removing ___ from $i"
-	sed -i ''/___/d'' "$i"
+		echocolour "Removing ___ from $f"
+		sed -i ''/___/d'' "$f"
 
-	echocolour "Reverting ~~~ changes"
-	sed -i 's;^\([ \t]*\)// \(.*\)~~~$;\1\2;' "$i"
+		echocolour "Reverting ~~~ changes"
+		sed -i 's;^\([ \t]*\)// \(.*\)~~~$;\1\2;' "$f"
+	done
 done
 
 if [[ -z "${didSomething:-}" ]]; then

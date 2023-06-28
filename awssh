@@ -7,7 +7,7 @@ file=~/Private/passwords/aws
 
 printHelp () {
 cat <<EOF
-$0 <1-4> [-p password] [-f file] <user>
+$0 <1-4> [-p password] [-f file] [user]
 
 If password is given (before or after user), store it in file.
 
@@ -19,6 +19,7 @@ EOF
 }
 
 password=
+forceNoPassword=false
 user=
 which=
 
@@ -26,6 +27,9 @@ while [[ "$#" -gt 0 ]]; do
 	case "$1" in
 		-p)
 			password="$2"
+			if [[ -z "$password" ]]; then
+				forceNoPassword=true
+			fi
 			shift
 			;;
 		-f)
@@ -82,7 +86,7 @@ fi
 usePassword=`extractPasswordFromLine "$(grep $(constructPasswordLine $which) $file)"`
 echo "using password '$usePassword'"
 
-if [[ ! -z "$usePassword" ]]; then
+if [[ ! -z "$usePassword" ]] && [[ $forceNoPassword = false ]]; then
 	sshpass -p $usePassword ssh "$user"aws-itest-0$which.aws.vaion.com
 else
 	ssh "$user"aws-itest-0$which.aws.vaion.com

@@ -114,16 +114,50 @@ This log is from deployment:
 $deploymentName${node:-}
 
 It was downloaded at:
-$hour:$minute $day.$month 20$year
+$hour:$minute $day.$month. 20$year
+
+Log file unpacked at:
+$(date)
 EOF
 
 [[ $debug = true ]] && echocolour "Unpacking UI logs"
 if compgen -G ava*.zip > /dev/null ; then unzip ava*.zip -d logs_$logsName/ui; fi
 if compgen -G alta*.zip > /dev/null; then unzip alta*.zip -d logs_$logsName/ui; fi
 
+cd ~/Downloads
+
+# Analysis
+cd logs_$logsName/nodes
+echocolour "Analysing $(ls -1 | wc -l) servers"
+
+for CC in ./*; do
+	[[ $debug = true ]] && echocolour "Analysing $CC"
+	cd $CC
+
+	analysis=analysis
+	touch $analysis
+
+	for file in mgmt router access ana store authenticator norm streamer ui; do
+		echo "${file^^}" >> $analysis
+		analyse_logs.sh -f $file.txt -w full >> $analysis
+		echo >> $analysis
+	done
+
+	echo "PLATFORM" >> $analysis
+	if [[ -f platform.txt ]]; then
+		analyse_logs.sh -f platform.txt -w full >> $analysis
+		echo >> $analysis
+	elif [[ -f platform.log ]]; then
+		analyse_logs.sh -f platform.log -w full >> $analysis
+		echo >> $analysis
+	else
+		echo "WARNING - NO PLATFORM FILE"
+	fi
+
+	cd ..
+done
+
 [[ $debug = true ]] && echocolour "Deleting zips"
 # Remove zips
 cd ~/Downloads
 rm log_bundle.zip logs_*.zip ava*.zip alta*.zip 2>/dev/null
-
-# TODO Add log analysis
