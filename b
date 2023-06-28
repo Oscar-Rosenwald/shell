@@ -20,9 +20,7 @@ useLocalBranch=false
 
 function __printHelp() {
 cat <<EOF
-THESE INSTRUCTIONS ARE AS OF NOW INCORRECT, AND WILL APPLY ONCE THE SCRIPT IS IMPROVED
-b 
-  [-n] <branch name>
+b [-n] <branch name>
   [-d] [branch name]
   [branch name] [OPTIONS]...
 
@@ -34,7 +32,7 @@ list/edit branch usage
 -s  Update state to one of 'free reserved active pipeline long-term'
 -t  Update the task this branch is used for
 
-Simply writing the branch name will show usage of that branch. Leaving branch out defaults to current branch.
+Simply writing the branch name will show usage of that branch. Leaving branch out defaults to current branch during updating mode.
 Using `local` as branch name defaults to this one during displaying mode.
 EOF
 }
@@ -208,6 +206,12 @@ while [[ "$#" -gt 0 ]]; do
 			newTask="$1"
 			whatToDo=update
 			shift
+			;;
+		-*)
+			echocolour "Unknown option $opt"
+			echo
+			__printHelp
+			exit 1
 			;;
 		*)
 			if [[ "$opt" = "local" ]]; then
