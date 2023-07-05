@@ -21,6 +21,16 @@ Runs a unit test using bazel test. First argument must be a path to a directory.
  a, --all, --no-filter  override filter and run all; used to retain the filter if needed later
  --recursive            run all tests under the directory
  --                     other arguments passed to 'bazel test'
+
+Example usage:
+- tests go/vms/mgmt/api/tests/access_control_servers r 10 j 5 o debug R o all f TestSomeFeature/test_1
+  This runs the test defined by bazel target go_default_test in the given directory. It's run 10 times (no caching) in 5 jobs. The output is all (the last one overrides the first one). Race detection is enabled. We filter on the specific test.
+
+- tests go/vms/mgmt/api/tests/access_control_servers r 10 j 5 o debug R o all f TestSomeFeature/test_1 f /test_2
+  Same as before, but now a different test is run. The second `f` option overrides the subtest, but keeps the core test. Now we run TestSomeFeature/test_2.
+
+- tests go/vms/mgmt/api/tests/access_control_servers r 10 j 5 o debug R o all f TestSomeFeature/test_1 f /test_2 a
+  Same as above, but the `a` option overrides all `f` options, and all tests in the bazel target are run. A subsequent `f` would override the `a` again.
 EOF
 }
 
