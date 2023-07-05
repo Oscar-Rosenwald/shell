@@ -60,4 +60,4 @@ file="/tmp/"$(basename "$fullfile")
 imageTag="bazel/go/vms/${component}:${component}_image"
 
 scp "$fullfile" "admin@$addr:/tmp/"
-ssh "admin@$addr" -C "shell -c \"docker-compose rm -f -s $component && docker load -i $file && rm $file && docker tag $imageTag $component:latest && docker-compose up -d $component\""
+ssh "admin@$addr" -C "shell -c \"export COMPOSE_PROJECT_NAME=default; docker-compose rm -f -s $component && docker load -i $file && rm $file && docker tag $imageTag $component:latest && docker-compose up -d $component\""
