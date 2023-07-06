@@ -8,6 +8,7 @@ file=~/Private/passwords/aws
 printHelp () {
 cat <<EOF
 $0 <1-4> [-p password] [-f file] [user]
+$0 <ip>  ---||---
 
 If password is given (before or after user), store it in file.
 
@@ -61,8 +62,6 @@ if [[ -z "$user" ]]; then
 	user=admin
 fi
 
-user=$user@
-
 function constructPasswordLine {
 	whichAWS=$1
 	echo "^$whichAWS:.*"
@@ -70,7 +69,7 @@ function constructPasswordLine {
 
 function extractPasswordFromLine {
 	line="$1"
-	echo "$line" | sed 's/^[0-9]://'
+	echo "$line" | sed 's/^\([0-9]\|.\)\+://'
 }
 
 if [[ ! -z "$password" ]]; then
@@ -86,9 +85,17 @@ fi
 usePassword=`extractPasswordFromLine "$(grep $(constructPasswordLine $which) $file)"`
 echo "using password '$usePassword'"
 
+# If using AWS, only the number is given. Translate it to a URL.
+# If whole IP is given, do nothing.
+if [[ "$which" =~ "[0-9]" ]]; then
+	which=aws-itest-0$which.aws.vaion.com
+fi
+
+echo "Using URL $which"
+
 if [[ ! -z "$usePassword" ]] && [[ $forceNoPassword = false ]]; then
-	sshpass -p $usePassword ssh "$user"aws-itest-0$which.aws.vaion.com
+	sshpass -p $usePassword ssh "$user@$which"
 else
-	ssh "$user"aws-itest-0$which.aws.vaion.com
+	ssh "$user@$which"
 fi
 
