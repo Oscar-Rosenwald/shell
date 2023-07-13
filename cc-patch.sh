@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -euo pipefail
+set -xeuo pipefail
 IFS=$'\n\t'
 
 file=~/Private/passwords/aws
@@ -18,18 +18,11 @@ Defaults:
 EOF
 }
 
-if [[ $1 == --help ]] || [[ $1 == -h ]]; then
-	printHelp
-	exit 0
-fi
-
 password=
 forceNoPassword=false
 user=
 component=
-
-which=$1
-shift
+which=
 
 while [[ "$#" -gt 0 ]]; do
 	case "$1" in
@@ -49,7 +42,9 @@ while [[ "$#" -gt 0 ]]; do
 			exit 0
 			;;
 		*)
-			if [[ -z "$component" ]]; then
+			if [[ -z "$which" ]]; then
+				which="$1"
+			elif [[ -z "$component" ]]; then
 				component="$1"
 			elif [[ -z "$user" ]]; then
 				user="$1"
@@ -69,22 +64,34 @@ if [[ -z "$user" ]]; then
 	user=admin
 fi
 
+if grep -q "^.*$which.*:.*$" $file; then
+	which=$(grep "^.*$which.*:.*$" $file | cut -f 1 -d ':')
+fi
+
 function constructPasswordLine {
 	whichAWS=$1
-	echo "^$whichAWS:.*"
+	echo "^$whichAWS:.*:.*$"
 }
 
 function extractPasswordFromLine {
 	line="$1"
-	echo "$line" | sed 's/^\([0-9]\|.\)\+://'
+	echo "$line" | cut -f 3 -d ':'
+}
+
+function extractNameFromLine {
+	line=$1
+	echo "$line" | cut -f 2 -d ':'
 }
 
 if [[ ! -z "$password" ]]; then
 	if grep -q "$(constructPasswordLine $which)" $file; then
-		sed -i "s/$(constructPasswordLine $which)$/$which:$password/" $file
+		name=$(extractNameFromLine "$(grep $(constructPasswordLine $which) $file)")
+		sed -ie "s/$(constructPasswordLine $which)/$which:$name:$password/" $file
 		echo Stored new password: $(grep $(constructPasswordLine $which) $file)
+
 	else
-		echo "$which:$password" >> $file
+		read -p "Name: " name
+		echo "$which:$name:$password" >> $file
 		echo Inserted new password $password for $which
 	fi
 fi

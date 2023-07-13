@@ -41,7 +41,6 @@ _awssh_completions()
 	# at the top of the function to disable default
 	compopt +o default
 
-	wholeIndex=${#COMP_WORDS[@]}
 	considering=$((COMP_CWORD-1))
 	lastOption=${COMP_WORDS[considering]}
 	lastWord=${COMP_WORDS[COMP_CWORD]}
@@ -68,10 +67,39 @@ _awssh_completions()
 			COMPREPLY=($(compgen -W "$(sed 's/\(.*\):.*/\1/' $file)" -- "$lastWord"))
 		fi	
 	fi
-
-	# echo ""
-	# echo "last word $lastWord"
-	# echo "last option $lastOption"
-	# echo "file $file"
 }
 complete -F _awssh_completions awssh
+
+_cc-patch_completions()
+{
+	# disable default completion
+	compopt +o default
+
+	considering=$((COMP_CWORD-1))
+	lastOption=${COMP_WORDS[considering]} # Last full word before cursor given
+	lastWord=${COMP_WORDS[COMP_CWORD]}	  # Last word before cursor, even if it isn't finished
+	file=~/Private/passwords/aws
+
+	next=false
+	for arg in ${COMP_WORDS[@]}; do
+		if [[ $next = true ]]; then
+			file=${arg/~\//\/home\/cyril\/}
+			break
+		fi
+		if [[ $arg = "-f" ]]; then
+			next=true
+		fi
+	done
+
+	if [[ $lastOption = -f ]]; then
+		compopt -o default # reenable default completion to search for files
+		COMPREPLY=()
+	elif [[ -f $file ]]; then
+		if [[ $lastOption = -p ]] || [[ -f ${lastOption/~\//\/home\/cyril\/} ]] || [[ $lastOption = cc-patch.sh ]]; then
+			COMPREPLY=($(compgen -W "$(sed 's/.*:\(.*\):.*/\1/' $file)" -- "$lastWord"))
+		else
+			COMPREPLY=($(compgen -W 'mgmt access norm streamer ui authenticator store router' -- "$lastWord"))
+		fi	
+	fi
+}
+complete -F _cc-patch_completions cc-patch.sh
