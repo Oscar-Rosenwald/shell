@@ -87,7 +87,7 @@ echo "using password '$usePassword'"
 
 # If using AWS, only the number is given. Translate it to a URL.
 # If whole IP is given, do nothing.
-if [[ "$which" =~ "[0-9]" ]]; then
+if [[ "$which" =~ ^[0-9]$ ]]; then
 	which=aws-itest-0$which.aws.vaion.com
 fi
 
