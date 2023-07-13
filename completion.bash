@@ -35,3 +35,43 @@ _analyse_logs_completions()
 }
 
 complete -F _analyse_logs_completions analyse_logs.sh
+
+_awssh_completions()
+{
+	# at the top of the function to disable default
+	compopt +o default
+
+	wholeIndex=${#COMP_WORDS[@]}
+	considering=$((COMP_CWORD-1))
+	lastOption=${COMP_WORDS[considering]}
+	lastWord=${COMP_WORDS[COMP_CWORD]}
+	file=~/Private/passwords/aws
+
+	next=false
+	for arg in ${COMP_WORDS[@]}; do
+		if [[ $next = true ]]; then
+			file=${arg/~\//\/home\/cyril\/}
+			break
+		fi
+		if [[ $arg = "-f" ]]; then
+			next=true
+		fi
+	done
+
+	if [[ $lastOption = -f ]]; then
+		compopt -o default # reenable default completion
+		COMPREPLY=()
+	elif [[ -f $file ]]; then
+		if [[ $lastOption = -p ]]; then
+			COMPREPLY=($(compgen -W "$(sed 's/.*:\(.*\)/\1/' $file)" -- "$lastWord"))
+		else
+			COMPREPLY=($(compgen -W "$(sed 's/\(.*\):.*/\1/' $file)" -- "$lastWord"))
+		fi	
+	fi
+
+	# echo ""
+	# echo "last word $lastWord"
+	# echo "last option $lastOption"
+	# echo "file $file"
+}
+complete -F _awssh_completions awssh
