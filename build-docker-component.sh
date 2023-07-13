@@ -4,7 +4,7 @@ set -xeuo pipefail
 IFS=$'\n\t'
 
 if [[ "$#" -ne 1 ]]; then
-    echo "Usage $0 <addr> <component> [user]"
+    echo "Usage $0 <component>"
     exit 1
 fi
 
