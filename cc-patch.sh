@@ -18,6 +18,11 @@ Defaults:
 EOF
 }
 
+if [[ $1 == --help ]] || [[ $1 == -h ]]; then
+	printHelp
+	exit 0
+fi
+
 password=
 forceNoPassword=false
 user=
