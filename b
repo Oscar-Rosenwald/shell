@@ -33,7 +33,7 @@ list/edit branch usage
 -t  Update the task this branch is used for
 
 Simply writing the branch name will show usage of that branch. Leaving branch out defaults to current branch during updating mode.
-Using `local` as branch name defaults to this one during displaying mode.
+Using `this` as branch name defaults to this one during displaying mode.
 EOF
 }
 
@@ -214,7 +214,7 @@ while [[ "$#" -gt 0 ]]; do
 			exit 1
 			;;
 		*)
-			if [[ "$opt" = "local" ]]; then
+			if [[ "$opt" = "this" ]]; then
 				useLocalBranch=true
 			else
 				currentBranch="$opt"
