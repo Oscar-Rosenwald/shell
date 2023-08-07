@@ -86,6 +86,9 @@ function extractNameFromLine {
 if [[ ! -z "$password" ]]; then
 	if grep -q "$(constructPasswordLine $which)" $file; then
 		name=$(extractNameFromLine "$(grep $(constructPasswordLine $which) $file)")
+		if [[ $password = $name ]]; then
+			password=$(extractPasswordFromLine "$(grep $(constructPasswordLine $which) $file)")
+		fi
 		sed -ie "s/$(constructPasswordLine $which)/$which:$name:$password/" $file
 		echo Stored new password: $(grep $(constructPasswordLine $which) $file)
 

@@ -62,9 +62,9 @@ _awssh_completions()
 		COMPREPLY=()
 	elif [[ -f $file ]]; then
 		if [[ $lastOption = -p ]]; then
-			COMPREPLY=($(compgen -W "$(sed 's/.*:\(.*\)/\1/' $file)" -- "$lastWord"))
+			COMPREPLY=($(compgen -W "$(sed 's/.*:\(.*\):.*/\1/' $file)" -- "$lastWord"))
 		else
-			COMPREPLY=($(compgen -W "$(sed 's/\(.*\):.*/\1/' $file)" -- "$lastWord"))
+			COMPREPLY=($(compgen -W "$(sed 's/.*:\(.*\):.*/\1/' $file)" -- "$lastWord"))
 		fi	
 	fi
 }
