@@ -151,7 +151,7 @@ else
 	testDir="$testDir:go_default_test"
 fi
 
-command="TEST_TARGETS=//$testDir EXTRA_TEST_OPTIONS='--test_filter=$coreTest$filter --runs_per_test=$runsPerTest --jobs=$jobs --test_output=$output --test_timeout=$timeout $@' make main_test$race"
+command="TEST_TARGETS=//$testDir EXTRA_TEST_OPTIONS='--test_filter=$coreTest$filter --runs_per_test=$runsPerTest --jobs=$jobs --test_output=$output --test_timeout=$timeout --test_env=POSTGRES_PORT=5434 --nocache_test_results $@' make main_test$race"
 
 echocolour "$command"
 eval $command
