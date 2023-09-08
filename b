@@ -32,6 +32,7 @@ list/edit branch usage
 -s  Update state to one of 'free reserved active pipeline long-term'
 -t  Update the task this branch is used for
 -nt Alias of "-s active -t"
+-pt Alias of "-s pipeline -t"
 
 Simply writing the branch name will show usage of that branch. Leaving branch out defaults to current branch during updating mode.
 Using `this` as branch name defaults to this one during displaying mode.
@@ -211,6 +212,13 @@ while [[ "$#" -gt 0 ]]; do
 		-nt)
 			newTask="$1"
 			newStatus="active"
+			__isValidOption "$newStatus"
+			whatToDo=update
+			shift
+			;;
+		-pt)
+			newTask="$1"
+			newStatus="pipeline"
 			__isValidOption "$newStatus"
 			whatToDo=update
 			shift
