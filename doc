@@ -1,0 +1,334 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+IFS=$'\n\t'
+
+printHelp () {
+cat <<EOF
+Tell me what to do
+
+Both servces:
+- make    [EOF|full]                 Create and run both services ("full" means also create the database, table, and field)
+- drop                               Stop and destroy both services
+- purge                              Same as "drop" + deletes all data; same as init
+- state   [EOF|all]                  Print docker ps ("all" adds the -a option)
+- reload                             Stop the service, build code again, start service (alias to "stop EOF; build; start EOF")
+
+Both or individual (EOF means no further input, command runs for both):
+- run     [EOF|master|slave|slaves]  Start service (slaves means all nodes except master)
+- stop    [EOF|master|slave|slaves]  Stop service
+- restart [EOF|master|slave|slaves]  Alias to "stop <option>; start <same option>"
+
+Individual service (EOF is same as master, slave must be specified):
+- bash    [EOF|master|slave]         Run root shell inside service
+- path    [EOF|master|slave]         Same as "bash" but with postgres user
+- conf    [EOF|master|slave]         Open postgresql.conf of service in vim
+- perm    [EOF|master|slave]         Open pg_hba.conf of service in vim
+
+Misc:
+- build                              Runs make rule for building the db container
+- init    [num-of-nodes]             Build the file structure and assign the right user to it
+
+# INIT
+
+The init option creates the desired file structure in /tmp. You need to provide the number of desired
+slave nodes, which defaults to 1. Other options which need to know this number simply look at the file
+structure created in this way. This eliminates the need for global variables.
+
+If a file structure already exists, this is deleted. Note that we destroy any existing data this way.
+
+The slave config directories will hold a 'master_exists' file, which tells their docker images that they
+are running in slave mode.
+
+Init can be used as an alias for purge.
+
+# FILE STRUCTURE
+
+Inside of the /tmp directory we create a 'docker' directory with the following file structure:
+
+/tmp/docker:
+
+├─ databases/		(holds the DB data)
+|  ├─ master/
+|  ├─ slave_1/
+|  ├─ slave_2/
+|  ├─ ...
+├─ config/			(holds the master_exists file and other similar configuration signal files)
+|  ├─ master_config/
+|  ├─ slave_1_config/
+|  |  ├─ master_exists
+|  ├─ slave_2_config/
+|  |  ├─ master_exists
+|  ├─ ...
+├─ backup/			(holds the backup file structure)
+|  ├─ master/
+|  |  ├─ archive/	(master DB is archived here)
+|  |  ├─ copy/		(slave DB archive is copied here)
+|  ├─ slave_1/
+|  |  ├─ archive/	(slave DB is archived here)
+|  |  ├─ copy/		(master DB archive is copied here)
+|  ├─ ...
+
+Everything inside the docker directory belongs to the user 70, which is the docker postgres user. 
+
+# REFERENCING NODES
+
+Nodes are referenced by their function in the cluster. We always here 'master'. Secondaries are referenced by
+their number, e.g. '1' would translate to slave_1.
+
+When the above documentation lists 'slave' as a potential option to a command, we mean the number, not the
+word slave. On the other hand, if the option says 'master', we need the word 'master'.
+EOF
+}
+
+init () {
+	howMany=$1 # Number of slave nodes in the server group
+
+	sudo rm -rf /tmp/docker
+	sudo mkdir /tmp/docker
+	cd /tmp/docker
+
+	# database volumes
+	sudo mkdir databases
+	cd databases
+	
+	sudo mkdir master
+	i=1
+	while [[ $i -lt $((howMany + 1)) ]]; do
+		sudo mkdir slave_$i
+		((i = $i + 1))
+	done
+
+	cd ..
+
+	# Archive volumes
+	sudo mkdir backup
+	cd backup
+
+	sudo mkdir master master/archive master/copy
+	i=1
+	while [[ $i -lt $((howMany + 1)) ]]; do
+		sudo mkdir slave_$i "slave_$i"/archive "slave_$i"/copy
+		((i = $i + 1))
+	done
+
+	cd ..
+
+	# Cluster configuration
+	sudo mkdir config
+	cd config
+
+	sudo mkdir master
+	i=1
+	while [[ $i -lt $((howMany + 1)) ]]; do
+		sudo mkdir slave_$i
+		sudo touch slave_$i/primary_exists
+		((i = $i + 1))
+	done
+
+
+	cd ..
+
+	# Assign permissions
+	sudo find /tmp/docker -exec chown 70 {} \;
+
+	# Clear docker images
+	docker stop master
+	for i in $(eval echo "{1..$howMany}"); do
+		docker rm slave_$i
+	done
+}
+
+howManySlaves () {
+	howMany=$(ls -1 /tmp/docker/config/slave* | wc -l)
+	echo $howMany
+}
+
+if [[ -z "${1:-}" ]]; then
+	echocolour "No commands given"
+	printHelp
+	exit 1
+fi
+
+case "$1" in
+	init)
+		init ${2:-1}
+		;;
+	state)
+		if [[ "$2" = all ]]; then
+			docker ps -a
+		else
+			docker ps
+		fi
+		;;
+	run|start)
+		numSlaves=howManySlaves
+		
+		what=all
+		if [[ "${2:-}" = master ]]; then
+			echo "Starting master"
+			what=master
+		elif [[ "${2:-}" = slaves ]]; then
+			echo "Starting all slaves"
+			what=slaves
+		elif [[ ! -z "${2:-}" ]]; then
+			echo "Starting slave_$2"
+			what=slave_"$2"
+		else
+			echo "Starting all"
+		fi
+
+		if [[ $what = master ]] || [[ $what = all ]]; then
+			docker start master
+		fi
+
+		i=1
+		while [[ $i -lt $((numSlaves + 1)) ]]; do
+			if [[ $what = all ]] || [[ $what = slaves ]] || [[ $what = $i ]]; then
+				docker start slave_$i
+			fi
+			((i = i + 1))
+		done
+		;;
+	stop)
+		numSlaves=howManySlaves
+		
+		what=all
+		if [[ "${2:-}" = master ]]; then
+			echo "Stopping master"
+			what=master
+		elif [[ "${2:-}" = slaves ]]; then
+			echo "Stopping all slaves"
+			what=slaves
+		elif [[ ! -z "${2:-}" ]]; then
+			echo "Stopping slave_$2"
+			what=slave_"$2"
+		else
+			echo "Starting all"
+		fi
+
+		if [[ $what = master ]] || [[ $what = all ]]; then
+			docker stop master
+		fi
+
+		i=1
+		while [[ $i -lt $((numSlaves + 1)) ]]; do
+			if [[ $what = all ]] || [[ $what = slaves ]] || [[ $what = $i ]]; then
+				docker stop slave_$i
+			fi
+			((i = i + 1))
+		done
+		;;
+
+	make)
+		numSlaves=howManySlaves
+		
+		docker run \
+			   --name master \
+			   -v /tmp/docker/databases/master:/var/lib/postgresql/data/pg15 \
+			   -v /tmp/docker/backup/master:/backup/me
+			   -v /tmp/docker/config:/config \
+			   db $1>/dev/null &
+
+		i=1
+		while [[ $i -lt $((numSlaves + 1)) ]]; do
+			docker run \
+				   --name slave_$i \
+				   -v /tmp/docker/databases/slave_$i:/var/lib/postgresql/data/pg15 \
+				   -v /tmp/docker/backup/master:/backup/master \
+				   -v /tmp/docker/backup/slave_$i:/backup/me \
+				   -v /tmp/docker/config/slave_$i:/config \
+				   db $1>/dev/null &
+
+		if [[ $2 = full ]]; then
+			sleep 2
+			docker exec master bash -c "psql -U postgres -c 'CREATE DATABASE rep;'"
+			docker exec master bash -c "psql -U postgres -d rep -c 'CREATE TABLE ps (name TEXT);'"
+			docker exec master bash -c 'psql -U postgres -d rep -c "INSERT INTO ps VALUES ('"'"'alex'"'"')"'
+		fi
+		;;
+	drop)
+		numSlaves=howManySlaves
+		docker stop master
+		docker rm master
+
+		i=1
+		while [[ $i -lt $((numSlaves + 1)) ]]; do
+			if [[ $what = all ]] || [[ $what = slaves ]] || [[ $what = $i ]]; then
+				docker stop slave_$i
+			fi
+			((i = i + 1))
+		done
+		;;
+	purge)
+		howMany=howManySlaves
+		init $howMany
+		;;
+	reload)
+		numSlaves=howManySlaves
+		
+		what=all
+		if [[ "${2:-}" = master ]]; then
+			echo "Reloading master"
+			what=master
+		elif [[ "${2:-}" = slaves ]]; then
+			echo "Reloading all slaves"
+			what=slaves
+		elif [[ ! -z "${2:-}" ]]; then
+			echo "Reloading slave $2"
+			what=slave_"$2"
+		else
+			echo "Reloading all"
+		fi
+
+		if [[ $what = master ]] || [[ $what = all ]]; then
+			docker stop master
+			docker start master
+		fi
+
+		i=1
+		while [[ $i -lt $((numSlaves + 1)) ]]; do
+			if [[ $what = all ]] || [[ $what = slaves ]] || [[ $what = $i ]]; then
+				docker stop slave_$i
+				docker start slave_$i
+			fi
+			((i = i + 1))
+		done
+		;;
+
+	bash)
+		if [[ ! -z "${2:-}" ]]; then
+			docker exec -it slave_$2 bash
+		else
+			docker exec -it master bash
+		fi
+		;;
+	pash)
+		if [[ ! -z "${2:-}" ]]; then
+			docker exec -it slave_$2 bash -c "su - postgres"
+		else
+			docker exec -it master bash -c "su - postgres"
+		fi
+		;;
+	conf)
+		if [[ ! -z "${2:-}" ]]; then
+			sudo vim /tmp/slave_$2/postgresql.conf
+		else
+			sudo vim /tmp/master/postgresql.conf
+		fi
+		;;
+	perm)
+		if [[ ! -z "${2:-}" ]]; then
+			sudo vim /tmp/slave_$2/pg_hba.conf
+		else
+			sudo vim /tmp/master/pg_hba.conf
+		fi
+		;;
+	build)
+		COMPONENTS=db make -C "$VAION_PATH" build_vms_bazel_image
+		;;
+	*)
+		echocolour "Unknown commands '$@'"
+		printHelp
+		;;
+esac
