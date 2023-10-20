@@ -3,16 +3,17 @@
 set -euo pipefail
 IFS=$'\n\t'
 
-printHelp () {
+printCommands () {
 cat <<EOF
 Tell me what to do
 
 Both servces:
 - make    [EOF|full]                 Create and run both services ("full" means also create the database, table, and field)
-- drop                               Stop and destroy both services
+- drop                               Stop and destroy all services
 - purge                              Same as "drop" + deletes all data; same as init
-- state   [EOF|all]                  Print docker ps ("all" adds the -a option)
-- reload                             Stop the service, build code again, start service (alias to "stop EOF; build; start EOF")
+- ps                                 Print docker ps
+- psa                                Print docker ps -a
+- reload                             Destroy the service, build code again, make new service (alias to "purge; build; make full")
 
 Both or individual (EOF means no further input, command runs for both):
 - run     [EOF|master|slave|slaves]  Start service (slaves means all nodes except master)
@@ -24,10 +25,20 @@ Individual service (EOF is same as master, slave must be specified):
 - path    [EOF|master|slave]         Same as "bash" but with postgres user
 - conf    [EOF|master|slave]         Open postgresql.conf of service in vim
 - perm    [EOF|master|slave]         Open pg_hba.conf of service in vim
+- log     [-f] [EOF|master|slave]    Show logs (optionally follow) of given node
 
 Misc:
 - build                              Runs make rule for building the db container
 - init    [num-of-nodes]             Build the file structure and assign the right user to it
+- backup                             Backup master, copy to all slaves, then start secondaries as standby servers
+- -h|--help                          Print full description of this tool
+-                                    Print this text
+EOF
+}
+
+printHelp () {
+	printCommands
+cat <<EOF
 
 # INIT
 
@@ -95,6 +106,7 @@ init () {
 	sudo mkdir master
 	i=1
 	while [[ $i -lt $((howMany + 1)) ]]; do
+		echo "Creating slave_$i database/"
 		sudo mkdir slave_$i
 		((i = $i + 1))
 	done
@@ -108,6 +120,7 @@ init () {
 	sudo mkdir master master/archive master/copy
 	i=1
 	while [[ $i -lt $((howMany + 1)) ]]; do
+		echo "Creating slave_$i backup/"
 		sudo mkdir slave_$i "slave_$i"/archive "slave_$i"/copy
 		((i = $i + 1))
 	done
@@ -121,6 +134,7 @@ init () {
 	sudo mkdir master
 	i=1
 	while [[ $i -lt $((howMany + 1)) ]]; do
+		echo "Creating slave_$i config/"
 		sudo mkdir slave_$i
 		sudo touch slave_$i/primary_exists
 		((i = $i + 1))
@@ -133,36 +147,40 @@ init () {
 	sudo find /tmp/docker -exec chown 70 {} \;
 
 	# Clear docker images
-	docker stop master
+	docker stop master 2>/dev/null || echo "" > /dev/null
+	docker rm master 2>/dev/null || echo "" > /dev/null
 	for i in $(eval echo "{1..$howMany}"); do
-		docker rm slave_$i
+		docker stop slave_$i 2>/dev/null || echo "" > /dev/null
+		docker rm slave_$i 2>/dev/null || echo "" > /dev/null
 	done
 }
 
 howManySlaves () {
-	howMany=$(ls -1 /tmp/docker/config/slave* | wc -l)
+	howMany=$(ls -1 /tmp/docker/config/slave* | grep slave_ | wc -l)
 	echo $howMany
 }
 
 if [[ -z "${1:-}" ]]; then
 	echocolour "No commands given"
-	printHelp
+	printCommands
 	exit 1
 fi
 
 case "$1" in
-	init)
-		init ${2:-1}
+	--help|-h)
+		printHelp
 		;;
-	state)
-		if [[ "$2" = all ]]; then
-			docker ps -a
-		else
-			docker ps
-		fi
+	init)
+		init "${2:-1}"
+		;;
+	ps)
+		docker ps
+		;;
+	psa)
+		docker ps -a
 		;;
 	run|start)
-		numSlaves=howManySlaves
+		numSlaves=`howManySlaves`
 		
 		what=all
 		if [[ "${2:-}" = master ]]; then
@@ -184,14 +202,14 @@ case "$1" in
 
 		i=1
 		while [[ $i -lt $((numSlaves + 1)) ]]; do
-			if [[ $what = all ]] || [[ $what = slaves ]] || [[ $what = $i ]]; then
+			if [[ $what = all ]] || [[ $what = slaves ]] || [[ $what = slave_$i ]]; then
 				docker start slave_$i
 			fi
 			((i = i + 1))
 		done
 		;;
 	stop)
-		numSlaves=howManySlaves
+		numSlaves=`howManySlaves`
 		
 		what=all
 		if [[ "${2:-}" = master ]]; then
@@ -204,98 +222,92 @@ case "$1" in
 			echo "Stopping slave_$2"
 			what=slave_"$2"
 		else
-			echo "Starting all"
+			echo "Stopping all"
 		fi
 
 		if [[ $what = master ]] || [[ $what = all ]]; then
-			docker stop master
+			docker stop master 2>/dev/null
 		fi
 
 		i=1
 		while [[ $i -lt $((numSlaves + 1)) ]]; do
-			if [[ $what = all ]] || [[ $what = slaves ]] || [[ $what = $i ]]; then
+			if [[ $what = all ]] || [[ $what = slaves ]] || [[ $what = slave_$i ]]; then
 				docker stop slave_$i
 			fi
 			((i = i + 1))
 		done
 		;;
 
+	restart)
+		shift 1
+		doc stop $@
+		doc start $@
+		;;
+
 	make)
-		numSlaves=howManySlaves
+		numSlaves=`howManySlaves`
 		
 		docker run \
 			   --name master \
 			   -v /tmp/docker/databases/master:/var/lib/postgresql/data/pg15 \
-			   -v /tmp/docker/backup/master:/backup/me
+			   -v /tmp/docker/backup/master:/backup/me \
 			   -v /tmp/docker/config:/config \
-			   db $1>/dev/null &
+			   db 1>/dev/null &
 
 		i=1
 		while [[ $i -lt $((numSlaves + 1)) ]]; do
+			echo "Configuring slave_$i"
 			docker run \
 				   --name slave_$i \
 				   -v /tmp/docker/databases/slave_$i:/var/lib/postgresql/data/pg15 \
 				   -v /tmp/docker/backup/master:/backup/master \
 				   -v /tmp/docker/backup/slave_$i:/backup/me \
 				   -v /tmp/docker/config/slave_$i:/config \
-				   db $1>/dev/null &
+				   db 1>/dev/null &
 
-		if [[ $2 = full ]]; then
+			((i = i + 1))
+		done
+
+		if [[ "${2:-}" = full ]]; then
+			echo "Full make initiated"
+			echo "sleeping..."
 			sleep 2
+			echo "woke up"
+			echo "making a database"
 			docker exec master bash -c "psql -U postgres -c 'CREATE DATABASE rep;'"
+			echo "making table 'ps'"
 			docker exec master bash -c "psql -U postgres -d rep -c 'CREATE TABLE ps (name TEXT);'"
+			echo "inserting 'alex' to 'ps'"
 			docker exec master bash -c 'psql -U postgres -d rep -c "INSERT INTO ps VALUES ('"'"'alex'"'"')"'
+			echo "done with database initialisation"
 		fi
 		;;
 	drop)
-		numSlaves=howManySlaves
-		docker stop master
-		docker rm master
+		numSlaves=`howManySlaves`
+
+		echo "Stopping and removing master"
+		docker stop master || echo "" >> /dev/null
+		docker rm master || echo "" >> /dev/null
 
 		i=1
 		while [[ $i -lt $((numSlaves + 1)) ]]; do
-			if [[ $what = all ]] || [[ $what = slaves ]] || [[ $what = $i ]]; then
-				docker stop slave_$i
-			fi
+			echo "Stopping and removing slave_$i"
+			docker stop slave_$i 2>/dev/null || echo "" >> /dev/null
+			docker rm slave_$i 2>/dev/null || echo "" >> /dev/null
 			((i = i + 1))
 		done
 		;;
 	purge)
-		howMany=howManySlaves
+		howMany=`howManySlaves`
+		doc drop
 		init $howMany
 		;;
 	reload)
-		numSlaves=howManySlaves
-		
-		what=all
-		if [[ "${2:-}" = master ]]; then
-			echo "Reloading master"
-			what=master
-		elif [[ "${2:-}" = slaves ]]; then
-			echo "Reloading all slaves"
-			what=slaves
-		elif [[ ! -z "${2:-}" ]]; then
-			echo "Reloading slave $2"
-			what=slave_"$2"
-		else
-			echo "Reloading all"
-		fi
-
-		if [[ $what = master ]] || [[ $what = all ]]; then
-			docker stop master
-			docker start master
-		fi
-
-		i=1
-		while [[ $i -lt $((numSlaves + 1)) ]]; do
-			if [[ $what = all ]] || [[ $what = slaves ]] || [[ $what = $i ]]; then
-				docker stop slave_$i
-				docker start slave_$i
-			fi
-			((i = i + 1))
-		done
+		doc drop
+		doc purge
+		doc build
+		doc make full
 		;;
-
 	bash)
 		if [[ ! -z "${2:-}" ]]; then
 			docker exec -it slave_$2 bash
@@ -327,8 +339,54 @@ case "$1" in
 	build)
 		COMPONENTS=db make -C "$VAION_PATH" build_vms_bazel_image
 		;;
+	log)
+		follow=""
+		if [[ ${2:-} = -f ]]; then
+			follow="-f"
+			shift 1
+		fi
+
+		if [[ ${2:-} = master ]] || [[ -z ${2:-} ]]; then
+			who=master
+		else
+			who=slave_$2
+		fi
+
+		docker logs $follow $who
+		;;
+	backup)
+		numSlaves=`howManySlaves`
+
+		test ! -z "$(sudo ls /tmp/docker/backup/master/archive/)" && sudo rm -r /tmp/docker/backup/master/archive/*
+
+		echo "Backing up master..."
+		docker exec master bash -c 'su -c "pg_basebackup -D /backup/me/archive" - postgres'
+		echo "Backup complete"
+
+		echo "Copying to slaves..."
+		i=1
+		while [[ $i -lt $((numSlaves + 1)) ]]; do
+			doc stop $i
+
+			sudo cp -p /tmp/docker/databases/slave_$i/pg_hba.conf /tmp/docker/
+			
+			sudo rm -fr /tmp/docker/databases/slave_$i/*
+			sudo cp -pR /tmp/docker/backup/master/archive/* /tmp/docker/databases/slave_$i/
+			sudo rm -fr /tmp/docker/databases/slave_$i/pg_wal/*
+
+			sudo mv -f /tmp/docker/pg_hba.conf /tmp/docker/databases/slave_$i/
+
+			sudo touch /tmp/docker/databases/slave_$i/standby.signal
+			sudo find /tmp/docker/databases/slave_$i -exec chown 70 {} \;
+
+			doc run $i
+
+			((i = i + 1))
+		done
+		echo "Slaves updated with new data"
+		;;
 	*)
 		echocolour "Unknown commands '$@'"
-		printHelp
+		printCommands
 		;;
 esac
