@@ -12,9 +12,12 @@ if [[ $1 = -h ]]; then
 	exit 0
 fi
 
-query="cat $1"
+firstQuery=
+query=""
+in=
+declare -a inArray
 colour=true
-noGreps=true
+file=$1
 shift 1 # Exclusions from now on
 
 while : ; do
@@ -29,18 +32,20 @@ while : ; do
 		fi
 	elif [[ "$line" != "in" ]]; then
 		query+=" | grep -v \"$line\""
-		noGreps=false
 	else
-		if [[ "$colour" = true ]]; then
-			query+=" | grep --color=always \"$2\""
-		else
-			query+=" | grep \"$2\""
-		fi
-		noGreps=false
+		in+=" | grep \"$2\""
+		inArray+=("$2")
 		shift 1
 	fi
 	shift 1
 done
 
-echo -e "${RED}$query | tail -n 100${NC}"
-(eval "$query") | tail -n 100
+command="cat $file $query $in"
+if [[ $colour = true ]]; then
+	for value in "${inArray[@]}"; do
+		command+=" | grep --color=always \"$value\""
+	done
+fi
+
+echo -e "${RED}$command | tail -n 100${NC}"
+(eval "$command") | tail -n 100
