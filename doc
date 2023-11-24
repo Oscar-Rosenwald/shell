@@ -25,7 +25,7 @@ Individual service (EOF is same as master, slave must be specified):
 - path    [EOF|master|slave]         Same as "bash" but with postgres user
 - conf    [EOF|master|slave]         Open postgresql.conf of service in vim
 - perm    [EOF|master|slave]         Open pg_hba.conf of service in vim
-- log     [-f] [EOF|master|slave]    Show logs (optionally follow) of given node
+- log     [-f] [EOF|master|slave]    Show logs (optionally follow) of given node inside the less command
 
 Misc:
 - build                              Runs make rule for building the db container
@@ -156,7 +156,7 @@ init () {
 }
 
 howManySlaves () {
-	howMany=$(ls -1 /tmp/docker/config/slave* | grep slave_ | wc -l)
+	howMany=$(ls -1 /tmp/docker/config/slave* 2>/dev/null | grep slave_ | wc -l)
 	echo $howMany
 }
 
@@ -249,7 +249,7 @@ case "$1" in
 		
 		docker run \
 			   --name master \
-			   -v /tmp/docker/databases/master:/var/lib/postgresql/data/pg15 \
+			   -v /tmp/docker/databases/master:/var/lib/postgresql/data \
 			   -v /tmp/docker/backup/master:/backup/me \
 			   -v /tmp/docker/config:/config \
 			   db 1>/dev/null &
@@ -259,7 +259,7 @@ case "$1" in
 			echo "Configuring slave_$i"
 			docker run \
 				   --name slave_$i \
-				   -v /tmp/docker/databases/slave_$i:/var/lib/postgresql/data/pg15 \
+				   -v /tmp/docker/databases/slave_$i:/var/lib/postgresql/data \
 				   -v /tmp/docker/backup/master:/backup/master \
 				   -v /tmp/docker/backup/slave_$i:/backup/me \
 				   -v /tmp/docker/config/slave_$i:/config \
@@ -340,9 +340,9 @@ case "$1" in
 		COMPONENTS=db make -C "$VAION_PATH" build_vms_bazel_image
 		;;
 	log)
-		follow=""
-		if [[ ${2:-} = -f ]]; then
-			follow="-f"
+		follow=false
+		if [[ ${2:-} = f ]]; then
+			follow=true
 			shift 1
 		fi
 
@@ -352,7 +352,13 @@ case "$1" in
 			who=slave_$2
 		fi
 
-		docker logs $follow $who
+		if [[ $follow = true ]]; then
+			echo "Logs with follow"
+			docker logs -f $who
+		else
+			echo "Logs without follow"
+			docker logs $who | less
+		fi
 		;;
 	backup)
 		numSlaves=`howManySlaves`
