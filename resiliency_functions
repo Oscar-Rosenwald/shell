@@ -1,8 +1,17 @@
 #!/bin/bash
 
+set -euo pipefail
+IFS=$'\n\t'
+
 # This file defines commonly used functions for manipulating high availability run_cluster tests.
 # It expects to run run_cluster in a hybrid mode with at least 3 nodes in the secondary server group.
 # If you use run, then 3 nodes will be used.
+#
+# It is assumed that there exist two directories in ~/ which hold pre-build configurations
+# of run_cluster so we do not have to rebuild them every time, which is tedious and racy. The directories
+# are:
+clean_cluster=~/cluster_CLEAN.bk # holds a clean build with no HA enabled.
+ha_cluster=~/cluster_HA.bk       # holds a build with high availability already enabled.
 
 function get {
 	curl http://localhost:8080/api/v1/serverGroups | jq '.[].id'
@@ -42,9 +51,9 @@ function sh {
 
 function run {
 	target="${1:-clean}"
-	src=~/cluster_CLEAN.bk
+	src=$clean_cluster
 	if [[ $target = ready ]]; then
-		src=~/cluster_HA.bk
+		src=$ha_cluster
 	fi
 
 	runCluster=$VAION_PATH/scripts/run_cluster
