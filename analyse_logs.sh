@@ -181,7 +181,7 @@ case $what in
 		fi
 		echo "File $file starts at" "'"`get_logs_start`"'" "and ends at" "'"`get_logs_end`"'".
 		echo "It has" `count_restarts` "restarts and" `count_panics` "panics."
-		echo "Its first version is" $(get_first_version)" and the last is" $(get_last_version).
+		echo "Its first version is" $(get_first_version)" and the last is" $(get_last_version)
 		if [[ $(get_first_version) = $(get_last_version) ]]; then
 			echo "WARNING: Versions are the same"
 		fi
