@@ -12,7 +12,7 @@ fi
 
 DEPLOYMENT="${2:-tom-not-tom-2}"
 DMP="${3:-prod}"
-context="${4:-lf99}"
+context="${4:-aw1}"
 
 if [ "$#" -ge 4 ]; then
 	shift 4

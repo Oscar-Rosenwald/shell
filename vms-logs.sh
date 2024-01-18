@@ -5,14 +5,14 @@ IFS=$'\n\t'
 
 if [[ "${1:-}" == "-h" ]]; then
 	echo "vms-logs.sh <deployment> <DMP> <component> <don't follow?> <context> <other options>"
-	echo "use 'd' for defaults (tom-not-tom-2, prod, mgmt, f, lf99)"
+	echo "use 'd' for defaults (tom-not-tom-2, prod, mgmt, f, aw1)"
 	exit 0
 fi
 
 DEP="${1:-tom-not-tom-2}"
 DMP="clouddemo-vcloud-${2:-prod}"
 COMPONENT="${3:-mgmt}"
-context="${5:-lf99}"
+context="${5:-aw1}"
 follow=true
 
 # Set defaults
@@ -29,7 +29,7 @@ if [[ "${4:-}" != "" ]]; then
 	follow=false
 fi
 if [[ "${5:-}" = "d" ]]; then
-	context=lf99
+	context=aw1
 fi
 
 if [[ "$#" -ge 5 ]]; then
