@@ -32,6 +32,9 @@ if ! compgen -G "$logsFilePrefix"* > /dev/null; then
 	elif compgen -G "log_bundle"* > /dev/null; then
 		echo "Cluster log doesn't exist. Use log bundle logs."
 		logsFilePrefix="log_bundle"
+	elif compgen -G "logsBundle"* > /dev/null; then
+		echo "Cluster log doesn't exist. Use logsBundle logs."
+		logsFilePrefix="logsBundle"
 	else
 		echo "No known log name format"
 		exit 1
