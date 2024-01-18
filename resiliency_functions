@@ -1,8 +1,5 @@
 #!/bin/bash
 
-set -euo pipefail
-IFS=$'\n\t'
-
 # This file defines commonly used functions for manipulating high availability run_cluster tests.
 # It expects to run run_cluster in a hybrid mode with at least 3 nodes in the secondary server group.
 # If you use run, then 3 nodes will be used.
@@ -50,6 +47,11 @@ function sh {
 }
 
 function run {
+	# Arg 1:
+	#   - clean = start from scratch
+	#   - old   = restart existing cluster
+	#   - ready = run cluster with HA enabled
+
 	target="${1:-clean}"
 	src=$clean_cluster
 	if [[ $target = ready ]]; then
@@ -60,7 +62,11 @@ function run {
 	
 	if [[ ! -d $src ]] || [[ $target = new ]]; then
 		echocolour "Creating new cluster"
+		sudo rm -rf ~/cluster
 		$runCluster --hybrid 3 -r
+	elif [[ $target = old ]]; then
+		echocolour "Restarting old cluster"
+		$runCluster --hybrid 3
 	else
 		echocolour "Running existing cluster in $target mode"
 		sudo rm -rf ~/cluster && sudo cp -ar $src ~/cluster
@@ -68,6 +74,7 @@ function run {
 	fi
 }
 
+# Default is the second node, asthat is where we want the dists replicated from.
 function insertDisk {
 	container="${1:-2}"
 	port=$((5432 + ($container - 1) * 4))
@@ -76,9 +83,48 @@ function insertDisk {
 	docker exec postgres_$container psql -U postgres -d vaionmgmt -p $port -c "INSERT INTO disks (serial, name) VALUES ('$diskId','$diskId');"
 }
 
+# Default is the 3rd node, as that is where we want the disks replicated to.
 function getDisks {
 	container="${1:-3}"
 	port=$((5432 + ($container - 1) * 4 + 1))
 	
 	docker exec postgres_$container psql -U postgres -d vaionmgmt -p $port -c "SELECT serial, name FROM disks;"
+}
+
+# Call this like:
+#    eval $(watchha 3 mgmt)
+function watchha {
+	node="${1:-2}"
+	component="${2:-mgmt}"
+
+	if [[ "$component" == "mgmt" ]]; then
+		grep='-E "(haservice|db_resiliency_service|mgmt_mode_normal.go)"'
+	elif [[ "$component" == "db" ]]; then
+		node="$node postgres"
+		grep='-vi cleanup'
+	fi
+
+	echo "cluster_log $node | grep --color=always $grep"
+}
+
+function diskName {
+	cat /dev/urandom | tr -dc 'a-zA-Z' | fold -w 10000 | head -n 1
+}
+
+function testWalOverflow {
+	# Arg 1: Standby node to stop. Default 3.
+	# Arg 2: OPTIONAL Master node. Default 2.
+
+	standby="${1:-3}"
+	master="${2:-2}"
+	port=$((5432 + 4)) # Port of the master's local database
+
+	insertDisk
+	docker pause postgres_$standby
+
+	for i in {1..100}; do
+		docker exec postgres_$master psql -U postgres -d vaionmgmt -p $port -c "UPDATE disks SET name = '"$(eval $diskName)"' where serial = '1';"
+	done
+
+	docker restart postgres_$standby
 }
