@@ -140,7 +140,7 @@ for CC in ./*; do
 	analysis=analysis
 	touch $analysis
 
-	for file in mgmt router access ana store authenticator norm streamer ui; do
+	for file in mgmt router access store authenticator norm streamer ui; do
 		echo "${file^^}" >> $analysis
 		analyse_logs.sh -f $file.txt -w full >> $analysis
 		echo >> $analysis
@@ -155,6 +155,10 @@ for CC in ./*; do
 		echo >> $analysis
 	else
 		echo "WARNING - NO PLATFORM FILE"
+	fi
+
+	if [[ -f ana.txt ]]; then
+		analyse_logs.sh -f ana.txt -w full >> $analysis
 	fi
 
 	cd ..

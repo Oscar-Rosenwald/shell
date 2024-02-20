@@ -63,7 +63,7 @@ echocolour "Running goimports"
 git diff --name-only | grep ".go$" | xargs goimports -w
 
 echocolour "Running formatting"
-git diff --name-only | grep ".go$" | xargs gofmt -w 
+git diff --name-only | grep ".go$" | xargs gofumpt -w 
 
 echocolour "Running gazelle"
 bazel run //:gazelle
