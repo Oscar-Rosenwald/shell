@@ -101,9 +101,13 @@ function insertDisk {
 function getDisks {
 	container="${1:-3}"
 	port=$((5432 + ($container - 1) * 4 + 1))
+	if [[ ! -z "${2:-}" ]]; then
+		port=$((port - 1))
+	fi
+	db=${3:-vaionmgmt}
 	echocolour "Getting all disks from container postgres_$container on port $port"
 	
-	docker exec postgres_$container psql -U postgres -d vaionmgmt -p $port -c "SELECT serial, name FROM disks;"
+	docker exec postgres_$container psql -U postgres -d $db -p $port -c "SELECT serial, name FROM disks;"
 }
 
 # Call this like:
