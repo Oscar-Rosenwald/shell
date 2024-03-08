@@ -49,7 +49,7 @@ _awssh_completions()
 	next=false
 	for arg in ${COMP_WORDS[@]}; do
 		if [[ $next = true ]]; then
-			file=${arg/~\//\/home\/cyril\/}
+			file=${arg/~\//\/home\/lightningman\/}
 			break
 		fi
 		if [[ $arg = "-f" ]]; then
@@ -83,7 +83,7 @@ _cc-patch_completions()
 	next=false
 	for arg in ${COMP_WORDS[@]}; do
 		if [[ $next = true ]]; then
-			file=${arg/~\//\/home\/cyril\/}
+			file=${arg/~\//\/home\/lightningman\/}
 			break
 		fi
 		if [[ $arg = "-f" ]]; then
