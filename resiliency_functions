@@ -117,13 +117,13 @@ function watchha {
 	component="${2:-mgmt}"
 
 	if [[ "$component" == "mgmt" ]]; then
-		grep='-E "(haservice|db_resiliency_service|mgmt_mode_normal.go)"'
+		grep="-E (haservice|db_resiliency_service|mgmt_mode_normal.go)"
 	elif [[ "$component" == "db" ]]; then
-		node="$node postgres"
+		component="postgres"
 		grep='-vi cleanup'
 	fi
 
-	echo "cluster_log $node | grep --color=always $grep"
+	cluster_log $node $component | grep $grep
 }
 
 function diskName {
