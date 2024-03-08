@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+components=("mgmt" "db" "access" "norm" "streamer" "ui" "authenticator" "store" "router")
+
 _branch_completions()
 {
 	index=${#COMP_WORDS[@]}
@@ -95,11 +97,50 @@ _cc-patch_completions()
 		compopt -o default # reenable default completion to search for files
 		COMPREPLY=()
 	elif [[ -f $file ]]; then
-		if [[ $lastOption = -p ]] || [[ -f ${lastOption/~\//\/home\/cyril\/} ]] || [[ $lastOption = cc-patch.sh ]]; then
+		if [[ $lastOption = -p ]] || [[ -f ${lastOption/~\//\/home\/lightningman\/} ]] || [[ $lastOption = cc-patch.sh ]]; then
 			COMPREPLY=($(compgen -W "$(sed 's/.*:\(.*\):.*/\1/' $file)" -- "$lastWord"))
 		else
-			COMPREPLY=($(compgen -W 'mgmt access norm streamer ui authenticator store router' -- "$lastWord"))
+			COMPREPLY=($(compgen -W "-h -p -f ${components[*]}" -- "$lastWord"))
 		fi	
 	fi
 }
 complete -F _cc-patch_completions cc-patch.sh
+
+__cc-action_completions()
+{
+	# disable default completion
+	compopt +o default
+
+	considering=$((COMP_CWORD-1))
+	lastOption=${COMP_WORDS[considering]} # Last full word before cursor given
+	lastWord=${COMP_WORDS[COMP_CWORD]}	  # Last word before cursor, even if it isn't finished
+	file=~/Private/passwords/aws
+
+	next=false
+	for arg in ${COMP_WORDS[@]}; do
+		if [[ $next = true ]]; then
+			file=${arg/~\//\/home\/lightningman\/}
+			break
+		fi
+		if [[ $arg = "-f" ]]; then
+			next=true
+		fi
+	done
+
+	if [[ $lastOption = -f ]]; then
+		compopt -o default
+		COMPREPLY=()
+	elif [[ -f $file ]]; then
+		if [[ $lastOption = -p ]] || [[ -f ${lastOption/~\//\/home\/lightningman\/} ]] || [[ $lastOption = cc-action.sh ]]; then
+			COMPREPLY=($(compgen -W "$(sed 's/.*:\(.*\):.*/\1/' $file)" -- "$lastWord"))
+		elif [[ $lastOption = -t ]]; then
+			# Enter number to tail.
+			COMPREPLY=()
+		elif [[ $lastOption = -sh ]]; then
+			COMPREPLY=($(compgen -W "${components[*]}" -- "$lastWord"))
+		else
+			COMPREPLY=($(compgen -W "-h -db -nodb -t -f -p -sh ${components[*]}" -- "$lastWord"))
+		fi	
+	fi
+}
+complete -F __cc-action_completions cc-action.sh
