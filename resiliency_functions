@@ -88,31 +88,108 @@ function run {
 	fi
 }
 
-# Default is the second node, asthat is where we want the dists replicated from.
-function insertDisk {
-	container="${1:-2}"
+# Get port of desired database on given node.
+function getDBPort {
+	# Args:
+	#   - 1 = container/node
+	#   - 2 = bool; true -> connect to the replica DB (default false).
+
+	container=$1
+	replica=${2:-no}
+
 	port=$((5432 + ($container - 1) * 4))
-	diskId="${2:-1}"
-	
+
+	if [[ $replica != no ]]; then
+		port=$((port + 1))
+	fi
+
+	echo $port
+}
+
+function insertDisk {
+	# Default is the second node, as that is where we want the disks replicated
+	# from.
+	#
+	# Args:
+	#   - 1 = container/node
+	#   - 2 = OPTIONAL disk serial
+	#   
+	# If 2 isn't given, look for the highest disk serial that already exists on
+	# the node, and insert a new disk with an incremented serial.
+	container="${1:-2}"
+	port=$(getDBPort $container)
+	diskId="${2:-}"
+
+	if [[ -z $diskId ]]; then
+		while read diskName; do
+			if [[ $diskName =~ ^[1-9]+$ ]]; then
+				diskId=$(($diskName + 1))
+				break
+			fi
+		done < <(getDisks $container t '' t)
+	fi
+
+	if [[ -z $diskId ]]; then
+		diskId=1
+	fi
+
+	echo "Inserting disk $diskId to node $container"
 	docker exec postgres_$container psql -U postgres -d vaionmgmt -p $port -c "INSERT INTO disks (serial, name, size, present) VALUES ('$diskId','$diskId',1, true);"
 }
 
-# Default is the 3rd node, as that is where we want the disks replicated to.
 function getDisks {
+	# Args:
+	#   - 1 = container (AKA node). Default 3
+	#   - 2 = bool; true -> use local DB instead of (default) replica
+	#   - 3 = database name. Default 'vaionmgmt'.
+	#   - 4 = bool; true -> only print the highest disk serial
+	
 	container="${1:-3}"
-	port=$((5432 + ($container - 1) * 4 + 1))
+	port=$(getDBPort $container t)
 	if [[ ! -z "${2:-}" ]]; then
 		port=$((port - 1))
 	fi
 	db=${3:-vaionmgmt}
-	echocolour "Getting all disks from container postgres_$container on port $port"
+
+	columns="serial, name"
+
+	highestOnly=${4:-}
+	if [[ ! -z $highestOnly ]]; then
+		highestOnly="LIMIT 1"
+		tuplesOnly="-t"
+		columns="serial"
+	else
+		echocolour "Getting all disks from container postgres_$container on port $port"
+	fi
 	
-	docker exec postgres_$container psql -U postgres -d $db -p $port -c "SELECT serial, name FROM disks;"
+	while read diskSerial; do
+		if [[ -z $highestOnly ]]; then
+			echo $diskSerial
+		elif [[ ! "$diskSerial" =~ ^$ ]]; then
+					echo $diskSerial
+		fi
+	done < <(docker exec postgres_$container psql -U postgres -d $db -p $port $tuplesOnly -c "SELECT $columns FROM disks WHERE serial ~ '^[0-9]+$' ORDER BY serial DESC $highestOnly;")
 }
 
-# Call this like:
-#    eval $(watchha 3 mgmt)
-function watchha {
+# Check the disks with the highest serial number from both nodes 3 and 4. Print
+# whether they match. The output tells you the highest number so you can compare
+# it with what's expected.
+#
+# WARNING: If both nodes have 0 disks, they'll match.
+function checkDisks {
+	threeOut=$(getDisks 3 '' '' t)
+	fourOut=$(getDisks 4 '' '' t)
+
+	if [[ "$threeOut" = "$fourOut" ]]; then
+		echo "Matching last disk '$threeOut' on both nodes"
+		return 0
+	else
+		echocolour "Bad!!! Node 3 has '$threeOut'; node 4 has '$fourOut'"
+		return 1
+	fi
+}
+
+function hawatch {
 	node="${1:-2}"
 	component="${2:-mgmt}"
 
@@ -126,24 +203,24 @@ function watchha {
 	cluster_log $node $component | grep $grep
 }
 
-function diskName {
-	cat /dev/urandom | tr -dc 'a-zA-Z' | fold -w 10000 | head -n 1
+# Pause component on node
+#
+#  - $1 = node (default 2)
+#  - $2 = component (default ha)
+function pause {
+	node=${1:-2}
+	component=${2:-ha}
+
+	kill -STOP $(cat ~/cluster/$node/$component.pid)
 }
 
-function testWalOverflow {
-	# Arg 1: Standby node to stop. Default 3.
-	# Arg 2: OPTIONAL Master node. Default 2.
+# Restart component on node
+#
+#  - $1 = node (default 2)
+#  - $2 = component (default ha)
+function start {
+	node=${1:-2}
+	component=${2:-ha}
 
-	standby="${1:-3}"
-	master="${2:-2}"
-	port=$((5432 + 4)) # Port of the master's local database
-
-	insertDisk
-	docker pause postgres_$standby
-
-	for i in {1..100}; do
-		docker exec postgres_$master psql -U postgres -d vaionmgmt -p $port -c "UPDATE disks SET name = '"$(eval $diskName)"' where serial = '1';"
-	done
-
-	docker restart postgres_$standby
+	kill -CONT $(cat ~/cluster/$node/$component.pid)
 }
