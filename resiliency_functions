@@ -57,7 +57,9 @@ function db {
 }
 
 function sh {
-	docker exec -it postgres_$1 bash
+	node=$1
+	shift
+	docker exec -it postgres_$node bash $@
 }
 
 function run {
@@ -223,4 +225,18 @@ function start {
 	component=${2:-ha}
 
 	kill -CONT $(cat ~/cluster/$node/$component.pid)
+}
+
+# Check which nodes are running HA replication by looking at their file
+# structures.
+function haRunning {
+	for node in {2..4}; do
+		if $(sh $node -c "ls -1 /var/lib/postgresql/data" | grep ha_enabled) ; then
+			echo "Node $node is running replication"
+		elif  $(sh $node -c "ls -1 /var/lib/postgresql/data" | grep remote) ; then
+			echo "Node $node is running replication"
+		else
+			echo "Node $node is NOT running replication"
+		fi
+	done				
 }
