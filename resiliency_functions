@@ -191,17 +191,28 @@ function checkDisks {
 }
 
 function hawatch {
-	node="${1:-2}"
-	component="${2:-mgmt}"
+	local node="${1:-2}"
+	local component="${2:-mgmt}"
+	local grep=
+	local nogrep=
 
 	if [[ "$component" == "mgmt" ]]; then
-		grep="-E (haservice|db_resiliency_service|mgmt_mode_normal.go)"
+		grep="-E \(haservice\|db_resiliency_service\|mgmt_mode_normal.go\)"
+		nogrep="'Register connection'"
 	elif [[ "$component" == "db" ]]; then
 		component="postgres"
-		grep='-vi cleanup'
+		nogrep="cleanup"
 	fi
 
-	cluster_log $node $component | grep $grep
+	cmd="cluster_log $node $component"
+	if [[ ! -z ${nogrep+x} ]]; then
+		cmd+=" | grep -iv $nogrep"
+	fi
+	if [[ ! -z ${grep:-} ]]; then
+		cmd+=" | grep $grep"
+	fi
+
+	eval "$cmd"
 }
 
 # Pause component on node
