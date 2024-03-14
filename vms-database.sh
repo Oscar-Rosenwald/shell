@@ -8,9 +8,9 @@ if [[ "${1:-}" == "-h" ]]; then
 	exit 0
 fi
 
-DEPLOYMENT="${1:-tom-not-tom-2}"
+DEPLOYMENT="${1:-v-cloud}"
 DMP="clouddemo-vcloud-${2:-prod}"
-context="${3:-lf99}"
+context="${3:-aw1}"
 
 depInternalName=$( kubectl --context="$context" --namespace "$DMP" get ingress | grep "$DEPLOYMENT" | cut -d " " -f 1 )
 DEPLOYMENT=$( kubectl get pods --namespace="$DMP" --context=$"$context" | grep "$depInternalName.*Running" | grep "\-db" | sed 's/\([^ ]*\) .*/\1/' )
