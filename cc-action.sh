@@ -11,6 +11,8 @@ $0 <1-4|IP> [-p password] [-f file] [-db | -nodb | component-to-log | -sh compon
 
 If password is given (before or after user), store it in file.
 
+-n Force password retrieval from the VMS
+
 -db   [port]  Log to vaionmgmt (on port if given)
 -nodb [port]  Log to postgres (on port if given)
 
@@ -32,6 +34,7 @@ user=
 which=
 whatToDo=log
 port=5432
+new=false # If true, get new password for the CC.
 
 while [[ "$#" -gt 0 ]]; do
 	case "$1" in
@@ -64,6 +67,9 @@ while [[ "$#" -gt 0 ]]; do
 			lines=$2
 			shift
 			;;
+		-n)
+			new=true
+			;;
 		-h|--help)
 			printHelp
 			exit 0
@@ -87,58 +93,27 @@ while [[ "$#" -gt 0 ]]; do
 done
 
 if [[ -z "$which" ]]; then
-	which=1
+	which=AWS1
 fi
 if [[ -z "$user" ]]; then
 	user=admin
 fi
 
-if grep -q "^.*$which.*:.*$" $file; then
-	which=$(grep "^.*$which.*:.*$" $file | cut -f 1 -d ':')
+
+if [[ ! -z $password ]]; then
+	get_cc_spec.sh -c $which -p $password
 fi
 
-function constructPasswordLine {
-	whichAWS=$1
-	echo "^$whichAWS:.*:.*$"
-}
-
-function extractPasswordFromLine {
-	line="$1"
-	echo "$line" | cut -f 3 -d ':'
-}
-
-function extractNameFromLine {
-	line=$1
-	echo "$line" | cut -f 2 -d ':'
-}
-
-if [[ ! -z "$password" ]]; then
-	if grep -q "$(constructPasswordLine $which)" $file; then
-		name=$(extractNameFromLine "$(grep $(constructPasswordLine $which) $file)")
-		if [[ $password = $name ]]; then
-			password=$(extractPasswordFromLine "$(grep $(constructPasswordLine $which) $file)")
-		fi
-		sed -ie "s/$(constructPasswordLine $which)/$which:$name:$password/" $file
-		echo Stored new password: $(grep $(constructPasswordLine $which) $file)
-
-	else
-		read -p "Name: " name
-		echo "$which:$name:$password" >> $file
-		echo Inserted new password $password for $which
-	fi
+# Check if we're getting a new password
+if [[ $new = true ]]; then
+	new='--no-cache'
+else
+	new=
 fi
 
-usePassword=`extractPasswordFromLine "$(grep $(constructPasswordLine $which) $file)"`
-echo "using password '$usePassword'"
-
-# If using AWS, only the number is given. Translate it to a URL.
-# If whole IP is given, do nothing.
-if [[ "$which" =~ ^[0-9]$ ]]; then
-	which=aws-itest-0$which.aws.vaion.com
-fi
-
-echo "Using URL $which"
-
+which=$(get_cc_spec.sh --get-ip -c $which)
+usePassword=$(get_cc_spec.sh -c $which $new)
+echo "Using IP $which and password '$usePassword'"
 
 if [[ ! -z "$usePassword" ]] && [[ $forceNoPassword = false ]]; then
 	case $whatToDo in

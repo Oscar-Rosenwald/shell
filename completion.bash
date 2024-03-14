@@ -98,7 +98,7 @@ _cc-patch_completions()
 		COMPREPLY=()
 	elif [[ -f $file ]]; then
 		if [[ $lastOption = -p ]] || [[ -f ${lastOption/~\//\/home\/lightningman\/} ]] || [[ $lastOption = cc-patch.sh ]]; then
-			COMPREPLY=($(compgen -W "$(sed 's/.*:\(.*\):.*/\1/' $file)" -- "$lastWord"))
+			COMPREPLY=($(compgen -W "$(sed 's/.*:\(.*\):.*:.*/\1/' $file)" -- "$lastWord"))
 		else
 			COMPREPLY=($(compgen -W "-h -p -f ${components[*]}" -- "$lastWord"))
 		fi	
@@ -132,7 +132,7 @@ __cc-action_completions()
 		COMPREPLY=()
 	elif [[ -f $file ]]; then
 		if [[ $lastOption = -p ]] || [[ -f ${lastOption/~\//\/home\/lightningman\/} ]] || [[ $lastOption = cc-action.sh ]]; then
-			COMPREPLY=($(compgen -W "$(sed 's/.*:\(.*\):.*/\1/' $file)" -- "$lastWord"))
+			COMPREPLY=($(compgen -W "$(sed 's/.*:\(.*\):.*:.*/\1/' $file)" -- "$lastWord"))
 		elif [[ $lastOption = -t ]]; then
 			# Enter number to tail.
 			COMPREPLY=()

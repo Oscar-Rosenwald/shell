@@ -7,9 +7,9 @@ file=~/Private/passwords/aws
 
 printHelp () {
 cat <<EOF
-$0 <1-4|ip> [component] [-p password] [-f file] [user]
+$0 <1-4|ip> [-n] [component] [-p password] [-f file] [user]
 
-If password is given, store it in file.
+If password is given, store it in file. -n mean get new password and store it.
 
 Defaults:
 - file      = $file
@@ -23,6 +23,7 @@ forceNoPassword=false
 user=
 component=
 which=
+new=false # If true, get new password for the CC.
 
 while [[ "$#" -gt 0 ]]; do
 	case "$1" in
@@ -36,6 +37,9 @@ while [[ "$#" -gt 0 ]]; do
 		-f)
 			file="$2"
 			shift
+			;;
+		-n)
+			new=true
 			;;
 		-h|--help)
 			printHelp
@@ -64,54 +68,22 @@ if [[ -z "$user" ]]; then
 	user=admin
 fi
 
-if grep -q "^.*$which.*:.*$" $file; then
-	which=$(grep "^.*$which.*:.*$" $file | cut -f 1 -d ':')
+if [[ ! -z $password ]]; then
+	get_cc_spec.sh -c $which -p $password
 fi
 
-function constructPasswordLine {
-	whichAWS=$1
-	echo "^$whichAWS:.*:.*$"
-}
-
-function extractPasswordFromLine {
-	line="$1"
-	echo "$line" | cut -f 3 -d ':'
-}
-
-function extractNameFromLine {
-	line=$1
-	echo "$line" | cut -f 2 -d ':'
-}
-
-if [[ ! -z "$password" ]]; then
-	if grep -q "$(constructPasswordLine $which)" $file; then
-		name=$(extractNameFromLine "$(grep $(constructPasswordLine $which) $file)")
-		if [[ $password = $name ]]; then
-			password=$(extractPasswordFromLine "$(grep $(constructPasswordLine $which) $file)")
-		fi
-		sed -ie "s/$(constructPasswordLine $which)/$which:$name:$password/" $file
-		echo Stored new password: $(grep $(constructPasswordLine $which) $file)
-
-	else
-		read -p "Name: " name
-		echo "$which:$name:$password" >> $file
-		echo Inserted new password $password for $which
-	fi
+# Check if we're getting a new password
+if [[ $new = true ]]; then
+	new='--no-cache'
+else
+	new=
 fi
 
-usePassword=`extractPasswordFromLine "$(grep $(constructPasswordLine $which) $file)"`
-echo "using password '$usePassword'"
+which=$(get_cc_spec.sh --get-ip -c $which)
+usePassword=$(get_cc_spec.sh -c $which $new)
+echo "Using IP $which and password '$usePassword'"
 
-# If using AWS, only the number is given. Translate it to a URL.
-# If whole IP is given, do nothing.
-
-if [[ "$which" =~ ^[0-9]$ ]]; then
-	which=aws-itest-0$which.aws.vaion.com
-fi
-
-echo "Using URL $which"
-
-if [[ ! -z "$usePassword" ]] && [[ $forceNoPassword = false ]]; then
+function patch {
 	build-docker-component.sh $component
 
 	file="/tmp/${component}_image.tgz"
@@ -119,6 +91,10 @@ if [[ ! -z "$usePassword" ]] && [[ $forceNoPassword = false ]]; then
 
 	sshpass -p $usePassword scp "$file" "$user@$which:/tmp/"
 	sshpass -p $usePassword ssh "$user@$which" -C "shell -c \"export COMPOSE_PROJECT_NAME=default; docker-compose rm -f -s $component && docker load -i $file && rm $file && docker tag $tag $component:latest && docker-compose up -d $component\""
+}
+
+if [[ ! -z "$usePassword" ]] && [[ $forceNoPassword = false ]]; then
+	patch
 else
 	update_component_docker.sh $which $component $user
 fi
