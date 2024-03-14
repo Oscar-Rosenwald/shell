@@ -58,8 +58,7 @@ function db {
 
 function sh {
 	node=$1
-	shift
-	docker exec -it postgres_$node bash $@
+	docker exec -it postgres_$node bash
 }
 
 function run {
@@ -231,9 +230,9 @@ function start {
 # structures.
 function haRunning {
 	for node in {2..4}; do
-		if $(sh $node -c "ls -1 /var/lib/postgresql/data" | grep ha_enabled) ; then
+		if test ! -z $(docker exec -it postgres_$node bash -c "ls -1 /var/lib/postgresql/data" | grep ha_enabled) ; then
 			echo "Node $node is running replication"
-		elif  $(sh $node -c "ls -1 /var/lib/postgresql/data" | grep remote) ; then
+		elif  test ! -z $(docker exec -it postgres_$node bash -c "ls -1 /var/lib/postgresql/data" | grep remote) ; then
 			echo "Node $node is running replication"
 		else
 			echo "Node $node is NOT running replication"
