@@ -79,7 +79,7 @@ while [[ "$#" -gt 0 ]]; do
 				which="$1"
 			elif [[ "$whatToDo" = log ]] || [[ $whatToDo = sh ]]; then
 				component="$1"
-			elif ([[ $whatToDo = db ]] || [[ $whatToDo = nodb ]]) && [[ $1 =~ '^[0-9]+$' ]]; then
+			elif ([[ $whatToDo = db ]] || [[ $whatToDo = nodb ]]) && [[ $1 =~ ^[0-9]+$ ]]; then
 				port=$1
 			elif [[ -z "$user" ]]; then
 				user="$1"
