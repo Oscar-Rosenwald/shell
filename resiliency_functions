@@ -178,8 +178,11 @@ function getDisks {
 #
 # WARNING: If both nodes have 0 disks, they'll match.
 function checkDisks {
-	threeOut=$(getDisks 3 '' '' t)
-	fourOut=$(getDisks 4 '' '' t)
+	first=${1:-3}
+	second=${2:-4}
+
+	threeOut=$(getDisks $first '' '' t)
+	fourOut=$(getDisks $second '' '' t)
 
 	if [[ "$threeOut" = "$fourOut" ]]; then
 		echo "Matching last disk '$threeOut' on both nodes"
@@ -197,7 +200,7 @@ function hawatch {
 	local nogrep=
 
 	if [[ "$component" == "mgmt" ]]; then
-		grep="-E \(haservice\|db_resiliency_service\|mgmt_mode_normal.go\)"
+		grep="-E \(haservice\|db_resiliency_service\|mgmt_mode_normal.go\|recovery\)"
 		nogrep="'Register connection'"
 	elif [[ "$component" == "db" ]]; then
 		component="postgres"
@@ -237,14 +240,34 @@ function start {
 	kill -CONT $(cat ~/cluster/$node/$component.pid)
 }
 
+# Find file in the db component of a node
+#
+# Args:
+#   - 1 = node
+#   - 2 = file
+#   - 3 = OPTIONAL directory from /
+function __findFile {
+	node=$1
+	file=$2
+	dir=${3:-/var/lib/postgresql/data/}
+
+	test ! -z $(docker exec -it postgres_$node bash -c "ls -1 $dir" | grep $file)
+}
+
 # Check which nodes are running HA replication by looking at their file
 # structures.
 function haRunning {
 	for node in {2..4}; do
-		if test ! -z $(docker exec -it postgres_$node bash -c "ls -1 /var/lib/postgresql/data" | grep ha_enabled) ; then
-			echo "Node $node is running replication"
-		elif  test ! -z $(docker exec -it postgres_$node bash -c "ls -1 /var/lib/postgresql/data" | grep remote) ; then
-			echo "Node $node is running replication"
+		if $(__findFile $node ha_enabled); then
+			if $(__findFile $node remote); then
+				if $(__findFile $node standby.signal /var/lib/postgresql/data/remote/pg15/); then
+					echo "Node $node is running replication as a STANDBY"
+				else
+					echo "Node $node is running replication WITHOUT QUORUM"
+				fi
+			else
+				echo "Node $node is running replication as a MASTER"
+			fi
 		else
 			echo "Node $node is NOT running replication"
 		fi
