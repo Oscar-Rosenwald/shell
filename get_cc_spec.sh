@@ -83,6 +83,7 @@ while [[ $# -gt 0 ]]; do
 			;;
 		--no-cache)
 			cached=false
+			forcedPassword=
 			;;
 		-h|--help)
 			printHelp
@@ -150,10 +151,12 @@ if [[ -z $CC ]]; then
 		exit 1
 	fi
 	CC=$(__getCCNameFromIP)
+	vms=$(__getVMSName)
 	if [[ -z $CC ]]; then
 		read -p "New CC name: " CC
-		__storeAttributes $ip $CC $forcedPassword $vmsName
-		return $forcedPassword
+		__storeAttributes $ip $CC $forcedPassword $vms
+		echo $forcedPassword
+		exit 0
 	fi
 elif [[ " $CC " =~ $ipv4_regex ]]; then
 	ip=$CC
@@ -199,15 +202,19 @@ function storeIP {
 
 # Store new values if any are given.
 if [[ ! -z $vmsName ]]; then
+	echo "Storing VMS name $vmsName"
 	storeVmsName $vmsName
 fi
 if [[ ! -z $ccName ]]; then
+	echo "Storing CC name $ccName"
 	storeCCName $ccName
 fi
 if [[ ! -z $storeIp ]]; then
+	echo "Storing IP $storeIP"
 	storeIP $storeIp
 fi
 if [[ ! -z $forcedPassword ]]; then
+	echo "Storing password $forcePassword"
 	storePassword $forcedPassword
 	return $forcedPassword
 fi
