@@ -12,8 +12,8 @@ DEPLOYMENT="${1:-v-cloud}"
 DMP="clouddemo-vcloud-${2:-prod}"
 context="${3:-aw1}"
 
-depInternalName=$( kubectl --context="$context" --namespace "$DMP" get ingress | grep "$DEPLOYMENT" | cut -d " " -f 1 )
-DEPLOYMENT=$( kubectl get pods --namespace="$DMP" --context=$"$context" | grep "$depInternalName.*Running" | grep "\-db" | sed 's/\([^ ]*\) .*/\1/' )
+depInternalName=$(kubectl --context="$context" --namespace "$DMP" get ingress | grep "$DEPLOYMENT" | cut -d " " -f 1 )
+DEPLOYMENT=$( kubectl get pods --namespace="$DMP" --context=$"$context" | grep "$depInternalName.*Running" | grep "\-db" | head -n1 | sed 's/\([^ ]*\) .*/\1/' )
 
 if [[ ! -z "$DEPLOYMENT" ]]; then
 	echo "DMP: $DMP"
