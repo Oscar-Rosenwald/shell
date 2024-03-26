@@ -127,7 +127,12 @@ if [[ ! -z "$usePassword" ]] && [[ $forceNoPassword = false ]]; then
 			sshpass -p $usePassword ssh "$user@$which" "logs -f -t ${lines:-100} $component"
 			;;
 		sh)
-			sshpass -p $usePassword ssh -t "$user@$which" "shell -ic \"docker-compose exec -it $component bash\""
+			do=bash
+			if [[ $component = mgmt ]]; then
+				do=sh
+			fi
+
+			sshpass -p $usePassword ssh -t "$user@$which" "shell -ic \"docker-compose exec -it $component $do\""
 			;;
 		*)
 			echo "Error: unknown action $whatToDo"
