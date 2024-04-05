@@ -3,17 +3,15 @@
 set -xeuo pipefail
 IFS=$'\n\t'
 
-file=~/Private/passwords/aws
 
 printHelp () {
 cat <<EOF
-$0 <1-4> [-p password] [-f file] [user] [-n]
+$0 <1-4> [-p password] [user] [-n]
 $0 <ip>  ---||---
 
-If password is given (before or after user), store it in file. Use -n to force-update the password of the CC.
+If password is given (before or after user), store it in the password file. Use -n to force-update the password of the CC.
 
 Defaults:
-- file  = $file
 - user  = admin
 - which = 1
 EOF
@@ -32,10 +30,6 @@ while [[ "$#" -gt 0 ]]; do
 			if [[ -z "$password" ]]; then
 				forceNoPassword=true
 			fi
-			shift
-			;;
-		-f)
-			file="$2"
 			shift
 			;;
 		-n)

@@ -1,6 +1,14 @@
 #!/usr/bin/env bash
 
 components=("mgmt" "db" "access" "norm" "streamer" "ui" "authenticator" "store" "router")
+_passwordFile=~/Private/passwords/aws
+
+# Completion functions cannot do [[ -f ]] on paths starting with '~/'
+# _parseFile changes ~/ in $1 to the absolute path.
+function _parseFile {
+	file=$1
+	echo ${file/~\//\/home\/lightningman\/}
+}
 
 _branch_completions()
 {
@@ -43,32 +51,9 @@ _awssh_completions()
 	# at the top of the function to disable default
 	compopt +o default
 
-	considering=$((COMP_CWORD-1))
-	lastOption=${COMP_WORDS[considering]}
 	lastWord=${COMP_WORDS[COMP_CWORD]}
-	file=~/Private/passwords/aws
 
-	next=false
-	for arg in ${COMP_WORDS[@]}; do
-		if [[ $next = true ]]; then
-			file=${arg/~\//\/home\/lightningman\/}
-			break
-		fi
-		if [[ $arg = "-f" ]]; then
-			next=true
-		fi
-	done
-
-	if [[ $lastOption = -f ]]; then
-		compopt -o default # reenable default completion
-		COMPREPLY=()
-	elif [[ -f $file ]]; then
-		if [[ $lastOption = -p ]]; then
-			COMPREPLY=($(compgen -W "$(sed 's/.*:\(.*\):.*/\1/' $file)" -- "$lastWord"))
-		else
-			COMPREPLY=($(compgen -W "$(sed 's/.*:\(.*\):.*/\1/' $file)" -- "$lastWord"))
-		fi	
-	fi
+	[[ $COMP_CWORD = 1 ]] && COMPREPLY=($(compgen -W "$(sed 's/.*:\(.*\):.*:.*/\1/' $_passwordFile)" -- "$lastWord"))
 }
 complete -F _awssh_completions awssh
 
@@ -77,32 +62,13 @@ _cc-patch_completions()
 	# disable default completion
 	compopt +o default
 
-	considering=$((COMP_CWORD-1))
-	lastOption=${COMP_WORDS[considering]} # Last full word before cursor given
 	lastWord=${COMP_WORDS[COMP_CWORD]}	  # Last word before cursor, even if it isn't finished
-	file=~/Private/passwords/aws
 
-	next=false
-	for arg in ${COMP_WORDS[@]}; do
-		if [[ $next = true ]]; then
-			file=${arg/~\//\/home\/lightningman\/}
-			break
-		fi
-		if [[ $arg = "-f" ]]; then
-			next=true
-		fi
-	done
-
-	if [[ $lastOption = -f ]]; then
-		compopt -o default # reenable default completion to search for files
-		COMPREPLY=()
-	elif [[ -f $file ]]; then
-		if [[ $lastOption = -p ]] || [[ -f ${lastOption/~\//\/home\/lightningman\/} ]] || [[ $lastOption = cc-patch.sh ]]; then
-			COMPREPLY=($(compgen -W "$(sed 's/.*:\(.*\):.*:.*/\1/' $file)" -- "$lastWord"))
-		else
-			COMPREPLY=($(compgen -W "-h -p -f ${components[*]}" -- "$lastWord"))
-		fi	
-	fi
+	if [[ $COMP_CWORD = 1 ]]; then
+		COMPREPLY=($(compgen -W "$(sed 's/.*:\(.*\):.*:.*/\1/' $_passwordFile)" -- "$lastWord"))
+	else
+		COMPREPLY=($(compgen -W "-h -p -f ${components[*]}" -- "$lastWord"))
+	fi	
 }
 complete -F _cc-patch_completions cc-patch.sh
 
@@ -112,35 +78,68 @@ __cc-action_completions()
 	compopt +o default
 
 	considering=$((COMP_CWORD-1))
-	lastOption=${COMP_WORDS[considering]} # Last full word before cursor given
+	prevOption=${COMP_WORDS[considering]} # Last full word before cursor given
 	lastWord=${COMP_WORDS[COMP_CWORD]}	  # Last word before cursor, even if it isn't finished
-	file=~/Private/passwords/aws
 
-	next=false
-	for arg in ${COMP_WORDS[@]}; do
-		if [[ $next = true ]]; then
-			file=${arg/~\//\/home\/lightningman\/}
-			break
-		fi
-		if [[ $arg = "-f" ]]; then
-			next=true
-		fi
-	done
-
-	if [[ $lastOption = -f ]]; then
-		compopt -o default
+	if [[ $COMP_CWORD = 1 ]]; then
+		COMPREPLY=($(compgen -W "$(sed 's/.*:\(.*\):.*:.*/\1/' $_passwordFile)" -- "$lastWord"))
+	elif [[ $prevOption = -t ]]; then
+		# Enter number to tail.
 		COMPREPLY=()
-	elif [[ -f $file ]]; then
-		if [[ $lastOption = -p ]] || [[ -f ${lastOption/~\//\/home\/lightningman\/} ]] || [[ $lastOption = cc-action.sh ]]; then
-			COMPREPLY=($(compgen -W "$(sed 's/.*:\(.*\):.*:.*/\1/' $file)" -- "$lastWord"))
-		elif [[ $lastOption = -t ]]; then
-			# Enter number to tail.
-			COMPREPLY=()
-		elif [[ $lastOption = -sh ]]; then
-			COMPREPLY=($(compgen -W "${components[*]}" -- "$lastWord"))
-		else
-			COMPREPLY=($(compgen -W "-h -db -nodb -t -f -p -sh ${components[*]}" -- "$lastWord"))
-		fi	
-	fi
+	elif [[ $prevOption = -sh ]]; then
+		COMPREPLY=($(compgen -W "${components[*]}" -- "$lastWord"))
+	else
+		COMPREPLY=($(compgen -W "-h -db -nodb -t -f -p -sh ${components[*]}" -- "$lastWord"))
+	fi	
 }
 complete -F __cc-action_completions cc-action.sh
+
+__get_cc_spec_completions()
+{
+	# disable default completion
+	compopt +o default
+
+	considering=$((COMP_CWORD-1))
+	prevOption=${COMP_WORDS[considering]} # Last full word before cursor given
+	lastWord=${COMP_WORDS[COMP_CWORD]}	  # Last word before cursor, even if it isn't finished
+
+	case $prevOption in
+		-c|-cc|--cc|--cloud-connector)
+			COMPREPLY=($(compgen -W "$(sed 's/.*:\(.*\):.*:.*/\1/' $_passwordFile)" -- "$lastWord"))
+			;;
+		-f|--file)
+			compopt -o default
+			COMPREPLY=()
+			;;
+		*)
+			COMPREPLY=($(compgen -W "-h --help --no-cache -p --password -vms --n -vms-name --store-ip -f --file --cc-name -c --cloud-connector" -- "$lastWord"))
+			;;
+	esac
+}
+complete -F __get_cc_spec_completions get_cc_spec.sh
+
+__hawatch_completions()
+{
+	# disable default completion
+	compopt +o default
+
+	lastWord=${COMP_WORDS[COMP_CWORD]}	  # Last word before cursor, even if it isn't finished
+
+	if [[ $COMP_CWORD = 1 ]]; then
+		compopt -o default
+		# Complete stored cloud connectors
+		COMPREPLY=($(compgen -W "$(sed 's/.*:\(.*\):.*:.*/\1/' $_passwordFile )" -- "$lastWord"))
+		# Also complete files. Which will be used determines what mode hawatch will run in.
+		COMPREPLY+=($(compgen -W "$(find $(dirname $(_parseFile ${lastWord:-.})) -maxdepth 1 -printf '%P\n')" -- "$lastWord"))
+	elif [[ $COMP_CWORD = 2 ]]; then
+		COMPREPLY=($(compgen -W "${components[*]}" -- "$lastWord"))
+	else
+		common=("-run" "-file" "-cc")
+		if [[ -f $(_parseFile ${COMP_WORDS[1]}) ]]; then
+			# Running in file mode unlocks the -l (less -S) option.
+			common+=("-l")
+		fi
+		COMPREPLY=($(compgen -W "${common[*]}" -- "$lastWord"))
+	fi
+}
+complete -F __hawatch_completions hawatch

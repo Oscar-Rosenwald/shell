@@ -3,13 +3,11 @@
 set -xeuo pipefail
 IFS=$'\n\t'
 
-file=~/Private/passwords/aws
-
 printHelp () {
 cat <<EOF
-$0 <1-4|IP> [-p password] [-f file] [-db | -nodb | component-to-log | -sh component] [-t num] [user] 
+$0 <1-4|IP> [-p password] [-db | -nodb | component-to-log | -sh component] [-t num] [user] 
 
-If password is given (before or after user), store it in file.
+If password is given (before or after user), store it in the password file.
 
 -n Force password retrieval from the VMS
 
@@ -22,7 +20,6 @@ component Log this component. No default.
 -sh <component> Log into component using bash
 
 Defaults:
-- file  = $file
 - user  = admin
 - which = 1
 EOF
@@ -43,10 +40,6 @@ while [[ "$#" -gt 0 ]]; do
 			if [[ -z "$password" ]]; then
 				forceNoPassword=true
 			fi
-			shift
-			;;
-		-f)
-			file="$2"
 			shift
 			;;
 		-db)
