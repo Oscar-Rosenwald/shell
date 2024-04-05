@@ -90,7 +90,7 @@ function patch {
 	tag="bazel/go/vms/$component:${component}_image"
 
 	sshpass -p $usePassword scp "$file" "$user@$which:/tmp/"
-	sshpass -p $usePassword ssh "$user@$which" -C "shell -c \"export COMPOSE_PROJECT_NAME=default; docker-compose rm -f -s $component && docker load -i $file && rm $file && docker tag $tag $component:latest && docker-compose up -d $component\""
+	sshpass -p $usePassword ssh "$user@$which" -C "shell -c \"docker-compose rm -f -s $component && docker load -i $file && rm $file && docker tag $tag $component:latest && docker-compose up -d $component\""
 }
 
 if [[ ! -z "$usePassword" ]] && [[ $forceNoPassword = false ]]; then

@@ -45,6 +45,6 @@ case "$comp" in
 		make build_vms_bazel_image COMPONENTS="$comp"
 		image_tag="bazel/go/vms/$comp:${comp}_image"
 		image_file="/tmp/${comp}_image.tgz"
-		compress "bazel-bin/go/vms/$comp/${comp}_image.tar" "$image_file"
+		compress "bazel-bin/go/vms/$comp/${comp}_image/tarball.tar" "$image_file"
 		;;
 esac
