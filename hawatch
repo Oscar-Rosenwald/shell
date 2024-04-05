@@ -1,0 +1,174 @@
+#!/bin/bash
+
+set -euo pipefail
+IFS=$'\n\t'
+
+source ~/shell/cluster
+
+function printHelp {
+	cat<<EOF
+$0 [OPT: node|file|cc-name] [OPT: component] [ANY_ORDER: -run|-file|-cc] [ANY_ORDER: -l] [REST]
+
+Filter logs from a CC in various forms.
+
+Arguments OPT are optional, but must be given in the above order.
+Arguments ANY_ORDER may be given in any order anywhere.
+Arguments REST must be given last.
+
+OPT #1: Node identifier. Could be:
+  - Number (assuming run_cluster is used)
+  - File name (when logs were downloaded)
+  - CC name that you'd pass to cc-action.sh
+Default is 2.
+
+OPT #2: Component name. Default is mgmt.
+
+ANY_ORDER #1: Specifies what mode to run in.
+  - run  = use run cluster files
+  - file = use any file
+  - cc   = use cc-action.sh in the logs mode
+Default is run, but depending on OPT #1 the mode will be inferred.
+
+ANY_ORDER #2: If mode is 'file', pipe output to less -S. Default is false.
+
+REST: Arguments to pass to some of the above modes.
+EOF
+}
+
+# Args in order
+node=
+component=
+
+# Never passed as command line arguments
+grep=
+nogrep=
+
+# Args in any order
+
+# Options:
+#   - run_cluster = Watches ~/cluster files
+#   - file        = filters content of a file
+#   - cc 		  = filter on remote CC log
+whatToDo=run_cluster
+less='' # Empty or 'less -S'
+
+while true; do
+	if [[ $# -eq 0 ]]; then
+		break
+	fi
+	
+	opt=$1
+
+	if [[ $opt = -run ]]; then
+		whatToDo=run_cluster
+		shift
+		continue
+	elif [[ $opt = -file ]]; then
+		whatToDo=file
+		shift
+		continue
+	elif [[ $opt = -cc ]]; then
+		whatToDo=cc
+		shift
+		continue
+	elif [[ $opt = -l ]]; then
+		less='less -S'
+		shift
+		continue
+	fi
+
+	[[ -z $node ]]      && node=$opt    && shift && continue
+	[[ -z $component ]] && component=$opt && shift && continue
+
+	if [[ ! -z $node ]] && [[ ! -z $component ]]; then
+		break
+	fi
+done
+
+[[ -z $node ]] && node=2
+[[ -z $component ]] && component=mgmt
+
+# If node is a file, disregard whatToDo and enter file mode.
+# 
+# It is likely that component won't be set if node is a file.
+# Use the filename to determina what the component is.
+if [[ -f $node ]]; then
+	whatToDo=file
+	component=$(basename $node)
+	component=${component/.txt/}
+elif [[ ! $node =~ ^[0-9]+$ ]]; then
+	whatToDo=cc
+fi
+
+case ${component} in
+	mgmt)
+		grep='-E "(haservice|db_resiliency_service|mgmt_mode_normal.go|recovery|Commit)"'
+		nogrep="'Register connection'"
+		;;
+	db|postgres)
+		grep='-E "(Commit|db/|LOG|postgres|started streaming WAL)"'
+		nogrep='-E "(cleanup|ha-remote|db_utils.go.\*Setting|database.\*does not exist)"'
+		;;
+esac
+
+# Args:
+#   - 1 = base command
+function __genericCCLog {
+	cmd="$@"
+	
+	if [[ ! -z $nogrep ]]; then
+		cmd+=" | grep --line-buffered -iv $nogrep"
+	fi
+
+	if [[ ! -z $grep ]]; then
+		cmd+=" | grep --color=always --line-buffered $grep"
+	fi
+
+	echocolour "$cmd"
+	eval "$cmd"
+}
+
+function runClusterLog {
+	__genericCCLog "cluster_log $node $component"
+}
+
+function ccLog {
+	__genericCCLog "cc-action.sh $node -n $component $@"
+}
+
+function fileLog {
+	if [[ ! -z $nogrep ]]; then
+		cmd="grep --line-buffered -vi $nogrep '$node'"
+
+		if [[ ! -z $grep ]]; then
+			cmd+=" | grep --line-buffered $grep"
+		fi
+	else
+		# Either nogrep or grep must be set, so no need to check if '-z $grep' here.
+		cmd="grep --line-buffered -i $grep $node"
+	fi
+
+	if [[ -z $less ]]; then
+		cmd+=" --color=always"
+	else
+		cmd+=' | less -S '
+	fi
+
+	echocolour "$cmd"
+	eval "$cmd"
+}
+
+case $whatToDo in
+	run_cluster)
+		runClusterLog
+		;;
+	file)
+		fileLog
+		;;
+	cc)
+		ccLog "$@"
+		;;
+	*)
+		printHelp
+		exit 0
+esac

@@ -181,41 +181,16 @@ function checkDisks {
 	first=${1:-3}
 	second=${2:-4}
 
-	threeOut=$(getDisks $first '' '' t)
-	fourOut=$(getDisks $second '' '' t)
+	firstOut=$(getDisks $first '' '' t)
+	secondOut=$(getDisks $second '' '' t)
 
-	if [[ "$threeOut" = "$fourOut" ]]; then
-		echo "Matching last disk '$threeOut' on both nodes"
+	if [[ "$firstOut" = "$secondOut" ]]; then
+		echo "Matching last disk '$firstOut' on both $first and $second nodes"
 		return 0
 	else
-		echocolour "Bad!!! Node 3 has '$threeOut'; node 4 has '$fourOut'"
+		echocolour "Bad!!! Node $first has '$firstOut'; node $second has '$secondOut'"
 		return 1
 	fi
-}
-
-function hawatch {
-	local node="${1:-2}"
-	local component="${2:-mgmt}"
-	local grep=
-	local nogrep=
-
-	if [[ "$component" == "mgmt" ]]; then
-		grep="-E \(haservice\|db_resiliency_service\|mgmt_mode_normal.go\|recovery\)"
-		nogrep="'Register connection'"
-	elif [[ "$component" == "db" ]]; then
-		component="postgres"
-		nogrep="cleanup"
-	fi
-
-	cmd="cluster_log $node $component"
-	if [[ ! -z ${nogrep+x} ]]; then
-		cmd+=" | grep -iv $nogrep"
-	fi
-	if [[ ! -z ${grep:-} ]]; then
-		cmd+=" | grep $grep"
-	fi
-
-	eval "$cmd"
 }
 
 # Pause component on node
