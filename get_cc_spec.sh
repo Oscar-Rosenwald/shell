@@ -15,9 +15,9 @@ By default, this gives you the password of the specified CC.
 
 SEARCH FOR THESE VALUES
 -c|-cc|--cc|--cloud-connector <CC name or IP>
-                         -ip  <ip>
+                          -ip <ip>
 
-STOP THESE VALUES
+STORE THESE VALUES
    -n|--cc-name <CC name>
   -p|--password <password>
 -vms|--vms-name <VMS name>
@@ -214,9 +214,10 @@ if [[ ! -z $storeIp ]]; then
 	storeIP $storeIp
 fi
 if [[ ! -z $forcedPassword ]]; then
-	echo "Storing password $forcePassword"
+	echo "Storing password $forcedPassword"
 	storePassword $forcedPassword
-	return $forcedPassword
+	echo $forcedPassword
+	exit 0
 fi
 
 # Ask for prompt and return user input.
