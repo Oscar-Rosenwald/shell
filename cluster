@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+
+function cluster_log {
+	node=${1:-1}
+	component=${2:-mgmt}
+	[[ $component = db ]] && component=postgres
+	tail --retry -F -n 100 ~/cluster/$node/$component.txt
+}
+
+function cluster_db {
+	port=2
+	if [[ ${1:-1} = 2 ]]; then
+		port=3
+	fi
+
+	psql "host=localhost user=postgres dbname=vaionmgmt port=543$port"
+}
+
