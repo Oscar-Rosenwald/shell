@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -xeuo pipefail
+set -euo pipefail
 IFS=$'\n\t'
 
 file=~/Private/passwords/aws
@@ -88,6 +88,8 @@ function patch {
 
 	file="/tmp/${component}_image.tgz"
 	tag="bazel/go/vms/$component:${component}_image"
+
+	set -x 
 
 	sshpass -p $usePassword scp "$file" "$user@$which:/tmp/"
 	sshpass -p $usePassword ssh "$user@$which" -C "shell -c \"docker-compose rm -f -s $component && docker load -i $file && rm $file && docker tag $tag $component:latest && docker-compose up -d $component\""

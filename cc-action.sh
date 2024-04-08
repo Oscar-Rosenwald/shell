@@ -138,6 +138,7 @@ if [[ ! -z "$usePassword" ]] && [[ $forceNoPassword = false ]]; then
 				do=sh
 			fi
 
+			set -x
 			sshpass -p $usePassword ssh -t "$user@$which" "shell -ic \"docker-compose exec -it $component $do\""
 			;;
 		*)
