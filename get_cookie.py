@@ -1,7 +1,7 @@
 # I got this mostly from the internet. Chrome stores cookies in a Cookie file
-# under the Chrome profile directory. Cookies are encrypted using a password in
-# the gnome keyring. Here I find the cookie for the VMS I want to access. This
-# only works as long as I'm logged in in the browser.
+# under the Chrome profile directory. Cookies are encrypted using a password
+# which is available online. Here I find the cookie for the VMS I want to
+# access. This only works as long as I'm logged in in the browser.
 
 from Crypto.Cipher import AES
 from Crypto.Protocol.KDF import PBKDF2
@@ -50,4 +50,7 @@ for name, enc_val in rows:
     val = decrypt(enc_val)
     cookies[name] = val
 
-print(cookies["va"])
+if "va" not in cookies:
+    print("No cookie found. Are you logged in to the VMS UI?")
+else: 
+    print(cookies["va"])
