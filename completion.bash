@@ -134,7 +134,7 @@ __hawatch_completions()
 	elif [[ $COMP_CWORD = 2 ]]; then
 		COMPREPLY=($(compgen -W "${components[*]}" -- "$lastWord"))
 	else
-		common=("-run" "-file" "-cc")
+		common=("-run" "-file" "-cc -h --help")
 		if [[ -f $(_parseFile ${COMP_WORDS[1]}) ]]; then
 			# Running in file mode unlocks the -l (less -S) option.
 			common+=("-l")

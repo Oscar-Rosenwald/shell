@@ -8,6 +8,7 @@ source ~/shell/cluster
 function printHelp {
 	cat<<EOF
 $0 [OPT: node|file|cc-name] [OPT: component] [ANY_ORDER: -run|-file|-cc] [ANY_ORDER: -l] [REST]
+$0 [-h | --help ]
 
 Filter logs from a CC in various forms.
 
@@ -58,6 +59,11 @@ while true; do
 	fi
 	
 	opt=$1
+
+	if [[ $opt = -h ]] || [[ $opt = --help ]]; then
+		printHelp
+		exit 0
+	fi
 
 	if [[ $opt = -run ]]; then
 		whatToDo=run_cluster
