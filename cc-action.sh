@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 
-set -xeuo pipefail
+set -euo pipefail
 IFS=$'\n\t'
 
 printHelp () {
 cat <<EOF
-$0 <1-4|IP> [-p password] [-db | -nodb | component-to-log | -sh component] [-t num] [user] 
+$0 <1-4|IP> [-p password] [-db | -nodb | component-to-log | -sh component] [-t num] [user] [-ha]
 
 If password is given (before or after user), store it in the password file.
 
@@ -16,6 +16,7 @@ If password is given (before or after user), store it in the password file.
 
 component Log this component. No default.
 -t        Log number of lines (default 100).
+-ha       Show only lines relevant for high availability.
 
 -sh <component> Log into component using bash
 
@@ -32,6 +33,7 @@ which=
 whatToDo=log
 port=5432
 new=false # If true, get new password for the CC.
+haMode=false
 
 while [[ "$#" -gt 0 ]]; do
 	case "$1" in
@@ -41,6 +43,9 @@ while [[ "$#" -gt 0 ]]; do
 				forceNoPassword=true
 			fi
 			shift
+			;;
+		-ha)
+			haMode=true
 			;;
 		-db)
 			whatToDo=db
@@ -108,15 +113,23 @@ which=$(get_cc_spec.sh --get-ip -c $which)
 usePassword=$(get_cc_spec.sh -c $which $new)
 echo "Using IP $which and password '$usePassword'"
 
+if [[ $whatToDo = log ]] && [[ $haMode = true ]]; then
+	hawatch $which $component -cc -t ${lines:-100}
+	exit 0
+fi
+
 if [[ ! -z "$usePassword" ]] && [[ $forceNoPassword = false ]]; then
 	case $whatToDo in
 		db)
+			set -x
 			sshpass -p $usePassword ssh -t "$user@$which" "shell -ic \"docker-compose exec -it db psql -U postgres -d vaionmgmt -p $port\""
 			;;
 		nodb)
+			set -x
 			sshpass -p $usePassword ssh -t "$user@$which" "shell -ic \"docker-compose exec db psql -U postgres -p $port\""
 			;;
 		log)
+			set -x
 			sshpass -p $usePassword ssh "$user@$which" "logs -f -t ${lines:-100} $component"
 			;;
 		sh)

@@ -89,7 +89,7 @@ __cc-action_completions()
 	elif [[ $prevOption = -sh ]]; then
 		COMPREPLY=($(compgen -W "${components[*]}" -- "$lastWord"))
 	else
-		COMPREPLY=($(compgen -W "-h -db -nodb -t -f -p -sh ${components[*]}" -- "$lastWord"))
+		COMPREPLY=($(compgen -W "-ha -h -db -nodb -t -f -p -sh ${components[*]}" -- "$lastWord"))
 	fi	
 }
 complete -F __cc-action_completions cc-action.sh
