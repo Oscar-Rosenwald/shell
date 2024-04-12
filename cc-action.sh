@@ -24,7 +24,7 @@ component Log this component. No default.
 
 --patch <component> Patch this component.
 
---reboot <component> Reboot the component. "platform" reboots the whole node.
+--reboot <component> Reboot the component. "platform" or "" reboots the whole node.
 
 Defaults:
 - user  = admin
@@ -133,6 +133,7 @@ usePassword=$(get_cc_spec.sh -c $which $new)
 echo "Using IP $which and password '$usePassword'"
 
 [[ $whatToDo = sh ]] && [[ $component = platform ]] && whatToDo=vplat
+[[ $whatToDo = reboot ]] && [[ -z ${component+x} ]] && component=platform
 
 if [[ $whatToDo = log ]] && [[ $haMode = true ]]; then
 	hawatch $which $component -cc -t ${lines:-100}
