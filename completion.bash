@@ -86,10 +86,12 @@ __cc-action_completions()
 	elif [[ $prevOption = -t ]]; then
 		# Enter number to tail.
 		COMPREPLY=()
-	elif [[ $prevOption = -sh ]]; then
+	elif [[ $prevOption = -sh ]] || [[ $prevOption = --patch ]]; then
 		COMPREPLY=($(compgen -W "${components[*]}" -- "$lastWord"))
+	elif [[ $prevOption = --reboot ]]; then
+		COMPREPLY=($(compgen -W "platform ${components[*]}" -- "$lastWord"))
 	else
-		COMPREPLY=($(compgen -W "-ha -h -db -nodb -t -f -p -sh ${components[*]}" -- "$lastWord"))
+		COMPREPLY=($(compgen -W "-ha -h -v -l -db -nodb -t -f -p --patch --reboot -sh ${components[*]}" -- "$lastWord"))
 	fi	
 }
 complete -F __cc-action_completions cc-action.sh
