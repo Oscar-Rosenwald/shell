@@ -3,16 +3,13 @@
 set -euo pipefail
 IFS=$'\n\t'
 
-file=~/Private/passwords/aws
-
 printHelp () {
 cat <<EOF
-$0 <1-4|ip> [-n] [component] [-p password] [-f file] [user]
+$0 <1-4|ip> [component] [-p password] [-n] [user]
 
-If password is given, store it in file. -n mean get new password and store it.
+If password is given, store it in the password file. -n mean get new password and store it.
 
 Defaults:
-- file      = $file
 - user      = admin
 - component = mgmt
 EOF
@@ -32,10 +29,6 @@ while [[ "$#" -gt 0 ]]; do
 			if [[ -z "$password" ]]; then
 				forceNoPassword=true
 			fi
-			shift
-			;;
-		-f)
-			file="$2"
 			shift
 			;;
 		-n)

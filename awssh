@@ -73,13 +73,12 @@ fi
 
 which=$(get_cc_spec.sh --get-ip -c $which)
 usePassword=$(get_cc_spec.sh -c $which $new)
-echo "Using IP $which and password '$usePassword'"
-
-set -x
 
 if [[ ! -z "$usePassword" ]] && [[ $forceNoPassword = false ]]; then
+	set -x
 	sshpass -p $usePassword ssh "$user@$which"
 else
+	set -x
 	ssh "$user@$which"
 fi
 

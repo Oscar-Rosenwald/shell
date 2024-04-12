@@ -13,6 +13,5 @@ if [[ "$FORCE_OPTION" == "simple" ]]; then
 	FORCE_OPTION=""
 fi
 
-echo "git push $FORCE_OPTION origin $OLD_BRANCH:cs_$NEW_BRANCH"
-
+set -x 
 git push $FORCE_OPTION origin "$OLD_BRANCH:cs_$NEW_BRANCH"

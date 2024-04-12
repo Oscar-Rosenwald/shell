@@ -86,13 +86,14 @@ ls
 exit
 EOF
 
+set -x
+
 # Check if we can use ssh password without prompting
 if [[ ! -z $(dpkg -s sshpass 2>/dev/null) ]] && [[ "$forceSSH" = false ]]; then
 	sshpass -p $PASSWORD ssh admin@${CAMERA} /bin/bash < <(eval $command)
 else
 	ssh admin@${CAMERA} /bin/bash 
 fi
-echo "deleting known host"
 
 # Doing the above to the camera resets the host key. This means if you had SSHed into it before, the next SSH would require
 # you to run the following. I took the liberty of doing so myself.

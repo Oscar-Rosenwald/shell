@@ -47,5 +47,5 @@ if [[ $colour = true ]]; then
 	done
 fi
 
-echo -e "${RED}$command | tail -n 100${NC}"
+echocolour "$command | tail -n 100"
 (eval "$command") | tail -n 100
