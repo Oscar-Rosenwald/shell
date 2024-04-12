@@ -94,7 +94,7 @@ while [[ "$#" -gt 0 ]]; do
 		*)
 			if [[ -z "$which" ]]; then
 				which="$1"
-			elif [[ "$whatToDo" = log ]] || [[ $whatToDo = sh ]]; then
+			elif [[ "$whatToDo" = log ]] || [[ $whatToDo = sh ]] || [[ $whatToDo = patch ]] || [[ $whatToDo = reboot ]]; then
 				component="$1"
 			elif ([[ $whatToDo = db ]] || [[ $whatToDo = nodb ]]) && [[ $1 =~ ^[0-9]+$ ]]; then
 				port=$1
