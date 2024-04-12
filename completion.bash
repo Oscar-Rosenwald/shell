@@ -132,11 +132,11 @@ __hawatch_completions()
 		# Complete stored cloud connectors
 		COMPREPLY=($(compgen -W "$(sed 's/.*:\(.*\):.*:.*/\1/' $_passwordFile )" -- "$lastWord"))
 		# Also complete files. Which will be used determines what mode hawatch will run in.
-		COMPREPLY+=($(compgen -W "$(find $(dirname $(_parseFile ${lastWord:-.})) -maxdepth 1 -printf '%P\n')" -- "$lastWord"))
+		COMPREPLY+=($(compgen -W "$(find $(dirname $(_parseFile ${lastWord:-.})) -maxdepth 1 -printf '%P\n' 2>/dev/null)" -- "$lastWord"))
 	elif [[ $COMP_CWORD = 2 ]]; then
 		COMPREPLY=($(compgen -W "${components[*]}" -- "$lastWord"))
 	else
-		common=("-run" "-file" "-cc -h --help")
+		common=("-run" "-file" "-cc" "-h" "--help")
 		if [[ -f $(_parseFile ${COMP_WORDS[1]}) ]]; then
 			# Running in file mode unlocks the -l (less -S) option.
 			common+=("-l")

@@ -144,14 +144,14 @@ function ccLog {
 
 function fileLog {
 	if [[ ! -z $nogrep ]]; then
-		cmd="grep --line-buffered -vi $nogrep '$node'"
+		cmd="grep -a --line-buffered -vi $nogrep '$node'"
 
 		if [[ ! -z $grep ]]; then
-			cmd+=" | grep --line-buffered $grep"
+			cmd+=" | grep -a --line-buffered $grep"
 		fi
 	else
 		# Either nogrep or grep must be set, so no need to check if '-z $grep' here.
-		cmd="grep --line-buffered -i $grep $node"
+		cmd="grep -a --line-buffered -i $grep $node"
 	fi
 
 	if [[ -z $less ]]; then
