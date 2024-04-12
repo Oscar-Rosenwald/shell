@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 components=("mgmt" "db" "access" "norm" "streamer" "ui" "authenticator" "store" "router")
+vmses=("v-cloud" "tom-not-tom-2" "feature-cc-resiliency-be" "hybrid-cloud-test")
 _passwordFile=~/Private/passwords/aws
 
 # Completion functions cannot do [[ -f ]] on paths starting with '~/'
@@ -145,3 +146,28 @@ __hawatch_completions()
 	fi
 }
 complete -F __hawatch_completions hawatch
+
+__vms-action_completions()
+{
+	# disable default completion
+	compopt +o default
+
+	considering=$((COMP_CWORD-1))
+	prevOption=${COMP_WORDS[considering]} # Last full word before cursor given
+	lastWord=${COMP_WORDS[COMP_CWORD]} # Last word before the cursor, even if it isn't finished
+
+	if [[ $COMP_CWORD = 1 ]]; then
+		COMPREPLY=($(compgen -W "${vmses[*]}" -- "$lastWord"))
+	elif [[ $prevOption = --patch ]]; then
+		COMPREPLY=($(compgen -W "${components[*]}" -- "$lastWord"))
+	elif [[ $prevOption = -t ]] || [[ $prevOption = -c ]] || [[ $prevOption = -n ]]; then
+		COMPREPLY=()
+	else
+		common=("-t" "-l" "-n" "-c" "-h" "--help" "--patch" "-db")
+		if [[ $COMP_CWORD = 2 ]]; then
+			common+=("${components[*]}")
+		fi
+		COMPREPLY=($(compgen -W "${common[*]}" -- "$lastWord"))
+	fi
+}
+complete -F __vms-action_completions vms-action.sh
