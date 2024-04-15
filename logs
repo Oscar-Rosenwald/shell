@@ -2,6 +2,7 @@
 
 RED='\033[0;31m'
 NC='\033[0m'
+UUIDRegex="[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
 
 if [[ $1 = -h ]]; then
 	echo -e "${RED}logs <file> ([c] [in] <file>)${NC}"
@@ -15,7 +16,10 @@ fi
 firstQuery=
 query=""
 in=
+replace=
+
 declare -a inArray
+
 colour=true
 file=$1
 shift 1 # Exclusions from now on
@@ -40,12 +44,44 @@ while : ; do
 	shift 1
 done
 
-command="cat $file $query $in"
+function deSpace {
+	arg=$1
+	arg="${arg#"${arg%%[![:space:]]*}"}"
+	arg="${arg%"${arg##*[![:space:]]}"}"
+	echo $arg
+}
+
+clusterTxt=$(dirname $(dirname $(dirname $(realpath $file))))/cluster.txt
+if [[ ! -f $clusterTxt ]]; then
+	return
+fi
+
+lineNumber=$(grep -n "^Cluster$" $clusterTxt | head -n 1 | cut -d ':' -f 1)
+declare -A SGNames
+
+while read SG; do
+	name=$(deSpace $(echo $SG | cut -d'|' -f 3))
+	id=$(deSpace $(echo $SG | cut -d'|' -f 2))
+
+	if [[ -z "${SGNames[$name]}" ]]; then
+		SGNames[$name]=true
+		replace+=" | sed 's/$id/$name/g'"
+	fi
+done < <(sed -n "4,$((lineNumber-2))p" $clusterTxt)
+
+while read CC; do
+	name=$(deSpace $(echo $CC | cut -d'|' -f 6))
+	id=$(deSpace $(echo $CC | cut -d'|' -f 5))
+
+	replace+=" | sed 's/$id/$name/g'"
+done < <(sed -n "4,$((lineNumber-2))p" $clusterTxt)
+
+command="cat $file $replace $query $in"
 if [[ $colour = true ]]; then
 	for value in "${inArray[@]}"; do
 		command+=" | grep --color=always \"$value\""
 	done
 fi
 
-echocolour "$command | tail -n 100"
+set -x
 (eval "$command") | tail -n 100
