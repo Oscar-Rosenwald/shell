@@ -137,7 +137,7 @@ __hawatch_completions()
 	elif [[ $COMP_CWORD = 2 ]]; then
 		COMPREPLY=($(compgen -W "${components[*]}" -- "$lastWord"))
 	else
-		common=("-run" "-file" "-cc" "-h" "--help")
+		common=( "-run" "-file" "-cc" "-h" "--help" "--debug" )
 		if [[ -f $(_parseFile ${COMP_WORDS[1]}) ]]; then
 			# Running in file mode unlocks the -l (less -S) option.
 			common+=("-l")
@@ -163,7 +163,7 @@ __vms-action_completions()
 	elif [[ $prevOption = -t ]] || [[ $prevOption = -c ]] || [[ $prevOption = -n ]]; then
 		COMPREPLY=()
 	else
-		common=("-t" "-l" "-n" "-c" "-h" "--help" "--patch" "-db")
+		common=("-t" "-l" "-n" "-c" "-h" "--help" "--patch" "-db" "--debug")
 		if [[ $COMP_CWORD = 2 ]]; then
 			common+=("${components[*]}")
 		fi

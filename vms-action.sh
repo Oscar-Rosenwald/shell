@@ -19,6 +19,8 @@ component           Log from this component and follow the log. Default is mgmt.
 
 -c <context>        Use this context. Default is aw1.
 -n <namespace>      Use this namespace. Default is prod. Leave out clouddemo-vcloud-.
+
+--debug             Turn on debugging.
 EOF
 }
 
@@ -28,9 +30,13 @@ whatToDo=log
 vms=
 follow=true
 tail=500
+debug=false
 
 while [[ $# -gt 0 ]]; do
 	case $1 in
+		--debug)
+			debug=true
+			;;
 		-db)
 			whatToDo=db
 			;;
@@ -67,13 +73,17 @@ while [[ $# -gt 0 ]]; do
 	shift
 done
 
+if [[ $debug = true ]]; then
+	set -x
+fi
+
 ([[ $whatToDo = log ]] | [[ $whatToDo = patch ]]) && [[ -z ${component+x} ]] && component=mgmt
 
 __getPodName() {
 	g="-v"
 	[[ ${1:-} = db ]] && g=''
 
-	depInternalName=$(kubectl --context=$context --namespace=$namespace get ingress | grep $vms | cut -d ' ' -f 1)
+	depInternalName=$(kubectl --context=$context --namespace=$namespace get ingress | grep "$vms\." | cut -d ' ' -f 1)
 	echo $(kubectl --context=$context --namespace=$namespace get pods | grep $depInternalName | grep $g '\-db-' | head -n 1 | cut -d ' ' -f 1)
 }
 

@@ -5,7 +5,7 @@ IFS=$'\n\t'
 
 printHelp () {
 cat <<EOF
-$0 <1-4|IP> [-p password] [-db | -nodb | component-to-log [-ha] [-l] [-t num] [user] | -sh component | -v | --patch component | --reboot component ]
+$0 <1-4|IP> [-p password] [-db | -nodb | component-to-log [-ha] [-l] [-t num] [user] | -sh component | -v | --patch component | --reboot component ] [--debug]
 
 If password is given (before or after user), store it in the password file.
 
@@ -22,13 +22,10 @@ component Log this component. No default.
 -sh <component> Log into component using bash.
 -v              Enter vplat.
 
---patch <component> Patch this component.
-
+--patch  <component> Patch this component.
 --reboot <component> Reboot the component. "platform" or "" reboots the whole node.
 
-Defaults:
-- user  = admin
-- which = 1
+--debug Turn on debugging.
 EOF
 }
 
@@ -41,6 +38,7 @@ port=5432
 new=false # If true, get new password for the CC.
 haMode=false
 less=false
+debug=false
 
 while [[ "$#" -gt 0 ]]; do
 	case "$1" in
@@ -50,6 +48,9 @@ while [[ "$#" -gt 0 ]]; do
 				forceNoPassword=true
 			fi
 			shift
+			;;
+		--debug)
+			debug=true
 			;;
 		-ha)
 			haMode=true
@@ -108,6 +109,10 @@ while [[ "$#" -gt 0 ]]; do
 	esac
 	shift
 done
+
+if [[ $debug = true ]]; then
+	set -x
+fi
 
 if [[ -z "$which" ]]; then
 	which=AWS1
