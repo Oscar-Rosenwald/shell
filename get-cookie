@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+IFS=$'\n\t'
+
+if [[ -z ${1+x} ]]; then
+	echo Supply a VMS name
+	exit 1
+fi
+
+python3 ~/shell/get_cookie.py $1

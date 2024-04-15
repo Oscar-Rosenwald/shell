@@ -171,3 +171,14 @@ __vms-action_completions()
 	fi
 }
 complete -F __vms-action_completions vms-action.sh
+
+__get-cookie_completions()
+{
+	# disable default completion
+	compopt +o default
+
+	lastWord=${COMP_WORDS[COMP_CWORD]} # Last word before the cursor, even if it isn't finished
+
+	COMPREPLY=($(compgen -W "${vmses[*]}" -- "$lastWord"))
+}
+complete -F __get-cookie_completions get-cookie
