@@ -149,28 +149,28 @@ if [[ ! -z "$usePassword" ]] && [[ $forceNoPassword = false ]]; then
 	case $whatToDo in
 		db)
 			set -x
-			sshpass -p $usePassword ssh -t "$user@$which" "shell -ic \"docker-compose exec -it db psql -U postgres -d vaionmgmt -p $port\""
+			sshpass -p $usePassword ssh -o StrictHostKeyChecking=no -t "$user@$which" "shell -ic \"docker-compose exec -it db psql -U postgres -d vaionmgmt -p $port\""
 			;;
 		nodb)
 			set -x
-			sshpass -p $usePassword ssh -t "$user@$which" "shell -ic \"docker-compose exec db psql -U postgres -p $port\""
+			sshpass -p $usePassword ssh -o StrictHostKeyChecking=no -t "$user@$which" "shell -ic \"docker-compose exec db psql -U postgres -p $port\""
 			;;
 		log)
 			if [[ $component = platform ]]; then
 				if [[ $less = true ]]; then
 					set -x 
-					sshpass -p $usePassword ssh "$user@$which" "shell -ic \"tail -n ${lines:-100} /var/log/supervisor/platform.log\"" | less
+					sshpass -p $usePassword ssh -o StrictHostKeyChecking=no "$user@$which" "shell -ic \"tail -n ${lines:-100} /var/log/supervisor/platform.log\"" | less
 				else
 					set -x 
-					sshpass -p $usePassword ssh "$user@$which" "shell -ic \"tail -f -n ${lines:-100} /var/log/supervisor/platform.log\""
+					sshpass -p $usePassword ssh -o StrictHostKeyChecking=no "$user@$which" "shell -ic \"tail -f -n ${lines:-100} /var/log/supervisor/platform.log\""
 				fi
 			else
 				if [[ $less = true ]]; then
 					set -x
-					sshpass -p $usePassword ssh "$user@$which" "logs -t ${lines:-100} $component" | less
+					sshpass -p $usePassword ssh -o StrictHostKeyChecking=no "$user@$which" "logs -t ${lines:-100} $component" | less
 				else
 					set -x
-					sshpass -p $usePassword ssh "$user@$which" "logs -f -t ${lines:-100} $component"
+					sshpass -p $usePassword ssh -o StrictHostKeyChecking=no "$user@$which" "logs -f -t ${lines:-100} $component"
 				fi
 			fi
 			;;
@@ -179,7 +179,7 @@ if [[ ! -z "$usePassword" ]] && [[ $forceNoPassword = false ]]; then
 			[[ $component = mgmt ]] && do=sh
 
 			set -x
-			sshpass -p $usePassword ssh -t "$user@$which" "shell -ic \"docker-compose exec -it $component $do\""
+			sshpass -p $usePassword ssh -o StrictHostKeyChecking=no -t "$user@$which" "shell -ic \"docker-compose exec -it $component $do\""
 			;;
 		patch)
 			cc-patch.sh $which $component
@@ -190,10 +190,10 @@ if [[ ! -z "$usePassword" ]] && [[ $forceNoPassword = false ]]; then
 		reboot)
 			if [[ $component = platform ]]; then
 				set -x
-				sshpass -p $usePassword ssh -t "$user@$which" "reboot"
+				sshpass -p $usePassword ssh -o StrictHostKeyChecking=no -t "$user@$which" "reboot"
 			else
 				set -x 
-				sshpass -p $usePassword ssh -t "$user@$which" "shell -ic \"docker-compose restart $component\""
+				sshpass -p $usePassword ssh -o StrictHostKeyChecking=no -t "$user@$which" "shell -ic \"docker-compose restart $component\""
 			fi
 			;;
 		*)
