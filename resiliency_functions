@@ -14,28 +14,28 @@ function get {
 	curl http://localhost:8080/api/v1/serverGroups | jq '.[].id'
 }
 
-function setha {
+function haset {
 	for node in 2 3 4; do
 		port=$((5432 + ($node - 1) * 4))
 		docker exec postgres_$node psql -U postgres -p $port -d vaionmgmt -c "update server_groups set highly_available = true where primary_site = false;"
 	done
 }
 
-function unsetha {
+function haunset {
 	for node in 2 3 4; do
 		port=$((5432 + ($node - 1) * 4))
 		docker exec postgres_$node psql -U postgres -p $port -d vaionmgmt -c "update server_groups set highly_available = false;"
 	done
 }
 
-function sethaapi {
+function hasetapi {
 	id=$(curl http://localhost:8080/api/v1/serverGroups | jq '.[].id' | tail -n 1 | sed 's/"//g')
 	echo
 	echo $id
 	curl http://localhost:8080/api/v1/serverGroups/$id -v -X PUT -d '{"highly_available":true}'
 }
 
-function unsethaapi {
+function haunsetapi {
 	id=$(curl http://localhost:8080/api/v1/serverGroups | jq '.[].id' | tail -n 1 | sed 's/"//g')
 	echo
 	echo $id
