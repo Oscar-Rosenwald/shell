@@ -27,6 +27,7 @@ OTHER
                --no-cache = force querying the VMS for the password.
 -f|--file <password file> = Specify password file. Default aws.
                 -h|--help = Print help.
+                  --debug = Print debugging while processing.
 EOF
 }
 
@@ -44,12 +45,16 @@ forcedPassword= # store this password
 ccName= # store this name
 vmsName= # store this VMS name
 storeIp= # store this CC IP
+debug=false
 
 while [[ $# -gt 0 ]]; do
 	opt=$1
 	shift
 
 	case $opt in
+		--debug)
+			debug=true
+			;;
 		--get-ip)
 			getIP=true
 			;;
@@ -97,12 +102,20 @@ while [[ $# -gt 0 ]]; do
 	esac
 done
 
+if [[ $debug = true ]]; then
+	set -x
+fi
+
 # Get first line containing argument.
 # 
 # Args
 #   - 1 = occurance to search for in the password file
 function __findLine {
-	grep $1 $passwordFile | head -n 1
+	if ! grep -q "$1" $passwordFile; then
+		echo ''
+		return
+	fi
+	grep "$1" $passwordFile | head -n 1
 }
 
 # Find attribute (column) of a line matching argument.
