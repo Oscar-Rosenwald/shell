@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 components=("mgmt" "db" "access" "norm" "streamer" "ui" "authenticator" "store" "router")
-vmses=("v-cloud" "tom-not-tom-2" "feature-cc-resiliency-be" "hybrid-cloud-test")
+vmses=("v-cloud" "tom-not-tom-2" "feature-cc-resiliency-be" "feature-cc-resiliency" "hybrid-cloud-test")
 _passwordFile=~/Private/passwords/aws
 
 # Completion functions cannot do [[ -f ]] on paths starting with '~/'
@@ -161,8 +161,10 @@ __vms-action_completions()
 	elif [[ $prevOption = --patch ]]; then
 		COMPREPLY=($(compgen -W "${components[*]}" -- "$lastWord"))
 	elif [[ $prevOption = -t ]] || [[ $prevOption = -c ]] || [[ $prevOption = -n ]]; then
-		COMPREPLY=()
+		:
 	else
+		# This comment is here because tree sitter has a problem for some reason
+		# if it isn't.
 		common=("-t" "-l" "-n" "-c" "-h" "--help" "--patch" "-db" "--debug")
 		if [[ $COMP_CWORD = 2 ]]; then
 			common+=("${components[*]}")

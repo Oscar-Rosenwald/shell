@@ -111,23 +111,23 @@ function __findLine {
 #   - 1 = occurance to search for in the password file
 #   - 2 = column
 function __findAttribute {
-	__findLine $1 | cut -d: -f $2
+	__findLine "$1" | cut -d: -f $2
 }
 
 function __getIP {
-	__findAttribute $CC 1
+	__findAttribute "$CC" 1
 }
 
 function __getCCNameFromIP {
-	__findAttribute $ip 2
+	__findAttribute "$ip" 2
 }
 
 function __getCachedPassword {
-	__findAttribute $CC 3
+	__findAttribute "$CC" 3
 }
 
 function __getVMSName {
-	__findAttribute $CC 4
+	__findAttribute "$CC" 4
 }
 
 # Amend line in the password file
@@ -154,7 +154,7 @@ if [[ -z $CC ]]; then
 	vms=$(__getVMSName)
 	if [[ -z $CC ]]; then
 		read -p "New CC name: " CC
-		__storeAttributes $ip $CC $forcedPassword $vms
+		__storeAttributes "$ip" "$CC" "$forcedPassword" "$vms"
 		echo $forcedPassword
 		exit 0
 	fi
@@ -169,7 +169,7 @@ function storePassword {
 	IP=$(__getIP)
 	VMS=$(__getVMSName)
 
-	__storeAttributes $IP $CC $1 $VMS
+	__storeAttributes "$IP" "$CC" "$1" "$VMS"
 }
 
 # Args:
@@ -178,7 +178,7 @@ function storeVmsName {
 	IP=$(__getIP)
 	password=$(__getCachedPassword)
 
-	__storeAttributes $IP $CC $password $1
+	__storeAttributes "$IP" "$CC" "$password" "$1"
 }
 
 # Args:
@@ -188,7 +188,7 @@ function storeCCName {
 	password=$(__getCachedPassword)
 	VMS=$(__getVMSName)
 
-	__storeAttributes $IP $1 $password $VMS
+	__storeAttributes "$IP" "$1" "$password" "$VMS"
 }
 
 # Args:
@@ -197,7 +197,7 @@ function storeIP {
 	password=$(__getCachedPassword)
 	VMS=$(__getVMSName)
 
-	__storeAttributes $1 $CC $password $VMS
+	__storeAttributes "$1" "$CC" "$password" "$VMS"
 }
 
 # Store new values if any are given.
@@ -210,7 +210,7 @@ if [[ ! -z $ccName ]]; then
 	storeCCName $ccName
 fi
 if [[ ! -z $storeIp ]]; then
-	echo "Storing IP $storeIP"
+	echo "Storing IP $storeIp"
 	storeIP $storeIp
 fi
 if [[ ! -z $forcedPassword ]]; then
@@ -246,9 +246,9 @@ function __getPasswordFromVMS {
 		exit 1
 	fi
 
-	nodeId=$(curl --cookie va=$cookie -s https://$vms/api/v1/nodes 2>/tmp/.curl1.log| jq '.[] | select(.network_interfaces != null) | .network_interfaces | to_entries[] | select(.value != null and .value.current_ip==''"'$IP'"'') | .value.node_id' | sed 's/"//g')
+	nodeId=$(curl --cookie va=$cookie -s https://$vms/api/v1/nodes 2>/tmp/.curl1.log | jq '.[] | select(.network_interfaces != null) | .network_interfaces | to_entries[] | select(.value != null and .value.current_ip==''"'$IP'"'') | .value.node_id' | sed 's/"//g')
 	if [[ -z $nodeId ]]; then
-		echo "VMS $vms doesn't seem to have a node matching ip $ip"
+		echo "VMS $vms doesn't seem to have a node matching ip $IP"
 		exit 1
 	fi
 
