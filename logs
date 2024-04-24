@@ -1,30 +1,33 @@
 #!/bin/bash
 
 RED='\033[0;31m'
+CYAN='\033[0;36m'
 NC='\033[0m'
-UUIDRegex="[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+set -euo pipefail
 
 if [[ $1 = -h ]]; then
-	echo -e "${RED}logs <file> ([c] [in] <file>)${NC}"
+	echo -e "${RED}logs <file> [ c | in <regex> ] [--no-tail]${NC}"
 	echo Give list of strings to exclude/include from the file.
 	echo
-	echo "c  -> toggle inclusion of colour. Default is to give coloured output. Using c once will disable it on strings going forward. Using c again will enable it for the following strings, and so on."
-	echo "in -> include following file. Default is exclude."
+	echo "c         -> toggle inclusion of colour. Default is to give coloured output. Using c once will disable it on strings going forward. Using c again will enable it for the following strings, and so on."
+	echo "in        -> include following file. Default is exclude."
+	echo "--no-tail -> Do not limit the output to any line number."
 	exit 0
 fi
 
-firstQuery=
 query=""
 in=
 replace=
 
 declare -a inArray
 
+mappingDir=~/Private/mappings
 colour=true
+noTail=false
 file=$1
 shift 1 # Exclusions from now on
 
-while : ; do
+while [[ $# -gt 0 ]]; do
 	line="$1"
 	if [[ "$line" = "" ]]; then
 		break
@@ -34,6 +37,8 @@ while : ; do
 		else
 			colour=true
 		fi
+	elif [[ $line = --no-tail ]]; then
+		noTail=true
 	elif [[ "$line" != "in" ]]; then
 		query+=" | grep -v \"$line\""
 	else
@@ -51,37 +56,51 @@ function deSpace {
 	echo $arg
 }
 
-clusterTxt=$(dirname $(dirname $(dirname $(realpath $file))))/cluster.txt
+logdir="$(dirname "$(realpath $file)")"
+while [[ ! -f "$logdir/cluster.txt" && "$logdir" != / ]]; do
+	logdir="$(dirname "$logdir")"
+done
+
+clusterTxt="$logdir"/cluster.txt
 if [[ ! -f $clusterTxt ]]; then
-	return
+	exit 1
 fi
 
-lineNumber=$(grep -n "^Cluster$" $clusterTxt | head -n 1 | cut -d ':' -f 1)
-declare -A SGNames
+downloadInfoFile="$logdir"/download_info
 
-while read SG; do
-	name=$(deSpace $(echo $SG | cut -d'|' -f 3))
-	id=$(deSpace $(echo $SG | cut -d'|' -f 2))
+if [[ ! -f "$downloadInfoFile" ]]; then
+	echo "What is this VMS called? (You forgot to include a download_info file). This will NOT create a permanent file."
+	read vmsName -p "VMS name: "
+	downloadInfoFile=/tmp/$vmsName
+	echo "VMS name:" > $downloadInfoFile
+	echo $vmsName >> $downloadInfoFile
+fi
 
-	if [[ -z "${SGNames[$name]}" ]]; then
-		SGNames[$name]=true
-		replace+=" | sed 's/$id/$name/g'"
-	fi
-done < <(sed -n "4,$((lineNumber-2))p" $clusterTxt)
+vmsName=$(sed -n '2p' "$downloadInfoFile")
+mappingFile=$mappingDir/$vmsName
 
-while read CC; do
-	name=$(deSpace $(echo $CC | cut -d'|' -f 6))
-	id=$(deSpace $(echo $CC | cut -d'|' -f 5))
+if [[ ! -f $mappingFile ]]; then
+	construct-name-mappings.sh -vms $vmsName --source "$clusterTxt"
+fi
 
-	replace+=" | sed 's/$id/$name/g'"
-done < <(sed -n "4,$((lineNumber-2))p" $clusterTxt)
+while read mapping; do
+	id=$(echo $mapping | cut -d ':' -f 1)
+	name=$(echo $mapping | cut -d ':' -f 2)
+	replace+=" | sed ''/$id/s//"'`'"printf \"${CYAN}$name${NC}\""'`'"/g''"
+done < <(cat $mappingFile)
 
-command="cat $file $replace $query $in"
+command="cat $file $query $in"
 if [[ $colour = true ]]; then
 	for value in "${inArray[@]}"; do
-		command+=" | grep --color=always \"$value\""
+		command+=" | sed ''/$value/s//"'`'"printf \"${RED}$value${NC}\""'`'"/g''"
 	done
 fi
 
+command+=" $replace"
+
+if [[ $noTail = false ]]; then
+	command+=" | tail -n 100"
+fi
+
 set -x
-(eval "$command") | tail -n 100
+eval "$command"

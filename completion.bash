@@ -3,6 +3,7 @@
 components=("mgmt" "db" "access" "norm" "streamer" "ui" "authenticator" "store" "router")
 vmses=("v-cloud" "tom-not-tom-2" "feature-cc-resiliency-be" "feature-cc-resiliency" "hybrid-cloud-test")
 _passwordFile=~/Private/passwords/aws
+mappingsDir=~/Private/mappings/
 
 # Completion functions cannot do [[ -f ]] on paths starting with '~/'
 # _parseFile changes ~/ in $1 to the absolute path.
@@ -92,7 +93,7 @@ __cc-action_completions()
 	elif [[ $prevOption = --reboot ]]; then
 		COMPREPLY=($(compgen -W "platform ${components[*]}" -- "$lastWord"))
 	else
-		COMPREPLY=($(compgen -W "-ha -h -v -l -db -nodb -t -f -p --patch --reboot -sh ${components[*]}" -- "$lastWord"))
+		COMPREPLY=($(compgen -W "-ha -h -v -l -db -nodb -t --no-map -f -p --patch --reboot -sh ${components[*]}" -- "$lastWord"))
 	fi	
 }
 complete -F __cc-action_completions cc-action.sh
@@ -127,17 +128,20 @@ __hawatch_completions()
 	compopt +o default
 
 	lastWord=${COMP_WORDS[COMP_CWORD]}	  # Last word before cursor, even if it isn't finished
-
+	prevOption=${COMP_WORDS[$((COMP_CWORD-1))]} # Last full word before cursor given
+	
 	if [[ $COMP_CWORD = 1 ]]; then
 		compopt -o default
 		# Complete stored cloud connectors
 		COMPREPLY=($(compgen -W "$(sed 's/.*:\(.*\):.*:.*/\1/' $_passwordFile )" -- "$lastWord"))
 		# Also complete files. Which will be used determines what mode hawatch will run in.
-		COMPREPLY+=($(compgen -W "$(find $(dirname $(_parseFile ${lastWord:-.})) -maxdepth 1 -printf '%P\n' 2>/dev/null)" -- "$lastWord"))
+		COMPREPLY+=($(compgen -W "$(find $(dirname $(_parseFile ${lastWord:-.})) -type f -maxdepth 1 -printf '%P\n' 2>/dev/null)" -- "$lastWord"))
+	elif [[ $prevOption = --map ]]; then
+		COMPREPLY=($(compgen -W "$(find $mappingsDir -maxdepth 1 -printf '%P\n' 2>/dev/null)" -- "$lastWord"))
 	elif [[ $COMP_CWORD = 2 ]]; then
-		COMPREPLY=($(compgen -W "${components[*]}" -- "$lastWord"))
+		COMPREPLY=($(compgen -W "${components[*]} --map --no-map" -- "$lastWord"))
 	else
-		common=( "-run" "-file" "-cc" "-h" "--help" "--debug" )
+		common=( "-run" "-file" "-cc" "-h" "--help" "--debug" "--no-map" "--map" )
 		if [[ -f $(_parseFile ${COMP_WORDS[1]}) ]]; then
 			# Running in file mode unlocks the -l (less -S) option.
 			common+=("-l")

@@ -26,6 +26,8 @@ component Log this component. No default.
 --reboot <component> Reboot the component. "platform" or "" reboots the whole node.
 
 --debug Turn on debugging.
+
+By default, we try to map the output's IDs onto real names. use --no-map to disable this.
 EOF
 }
 
@@ -39,6 +41,7 @@ new=false # If true, get new password for the CC.
 haMode=false
 less=false
 debug=false
+mapFile=
 
 while [[ "$#" -gt 0 ]]; do
 	case "$1" in
@@ -75,6 +78,9 @@ while [[ "$#" -gt 0 ]]; do
 			;;
 		--reboot)
 			whatToDo=reboot
+			;;
+		--no-map)
+			mapFile=none
 			;;
 		-t)
 			if [[ ! $whatToDo = log ]]; then
@@ -156,23 +162,28 @@ if [[ ! -z "$usePassword" ]] && [[ $forceNoPassword = false ]]; then
 			sshpass -p $usePassword ssh -o StrictHostKeyChecking=no -t "$user@$which" "shell -ic \"docker-compose exec db psql -U postgres -p $port\""
 			;;
 		log)
-			if [[ $component = platform ]]; then
-				if [[ $less = true ]]; then
-					set -x 
-					sshpass -p $usePassword ssh -o StrictHostKeyChecking=no "$user@$which" "shell -ic \"tail -n ${lines:-100} /var/log/supervisor/platform.log\"" | less
-				else
-					set -x 
-					sshpass -p $usePassword ssh -o StrictHostKeyChecking=no "$user@$which" "shell -ic \"tail -f -n ${lines:-100} /var/log/supervisor/platform.log\""
-				fi
-			else
-				if [[ $less = true ]]; then
-					set -x
-					sshpass -p $usePassword ssh -o StrictHostKeyChecking=no "$user@$which" "logs -t ${lines:-100} $component" | less
-				else
-					set -x
-					sshpass -p $usePassword ssh -o StrictHostKeyChecking=no "$user@$which" "logs -f -t ${lines:-100} $component"
-				fi
+			vmsName=$(get_cc_spec.sh -c "$which" --get-vms)
+			if [[ ! -z $vmsName ]] && [[ -z $mapFile ]]; then
+				mapFile=$vmsName
 			fi
+
+			shellCmd="logs -t ${lines:-100} -f $component"
+
+			if [[ $component = platform ]]; then
+				shellCmd="shell -c \"tail -n ${lines:-100} /var/lob/supervisor/platform.log\""
+			fi
+			
+			cmd="sshpass -p $usePassword ssh -o StrictHostKeyChecking=no \"$user@$which\" '$shellCmd'"
+
+			if [[ ! -z $mapFile ]]; then
+				cmd+=" | map-IDs.sh $mapFile"
+			fi
+			if [[ $less = true ]]; then
+				cmd+=" | less"
+			fi
+
+			echocolour $cmd
+			eval $cmd
 			;;
 		sh)
 			do=bash

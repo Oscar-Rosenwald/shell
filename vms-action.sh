@@ -5,7 +5,7 @@ IFS=$'\n\t'
 
 printHelp() {
 cat <<EOF
-$0 <vms-name> [ <component> [-t num] [-l] | -db | --patch <component> ] [-c <context>] [-n <namespace>]
+$0 <vms-name> [ <component> [-t num] [-l] | -db | --patch <component> ] [-c <context>] [-n <namespace>] [--no-map]
 
 Perform commmon VMS actions.
 
@@ -21,6 +21,8 @@ component           Log from this component and follow the log. Default is mgmt.
 -n <namespace>      Use this namespace. Default is prod. Leave out clouddemo-vcloud-.
 
 --debug             Turn on debugging.
+
+By default, we try to map the output's IDs onto real names. use --no-map to disable this.
 EOF
 }
 
@@ -31,6 +33,7 @@ vms=
 follow=true
 tail=500
 debug=false
+mapFile=
 
 while [[ $# -gt 0 ]]; do
 	case $1 in
@@ -39,6 +42,9 @@ while [[ $# -gt 0 ]]; do
 			;;
 		-db)
 			whatToDo=db
+			;;
+		--no-map)
+			mapFile=none
 			;;
 		--path)
 			whatToDo=patch
@@ -95,13 +101,17 @@ case $whatToDo in
 		;;
 	log)
 		pod=$(__getPodName)
+		f=
 		if [[ $follow = true ]]; then
-			set -x
-			kubectl logs --context=$context --namespace=$namespace $pod -f --tail=$tail $component $@
-		else
-			set -x
-			kubectl logs --context=$context --namespace=$namespace $pod --tail=$tail $component $@ | less
+			f="-f"
 		fi
+		if [[ -z $mapFile ]]; then
+			mapFile=$vms
+		fi
+
+		cmd="kubectl logs --context=$context --namespace=$namespace $pod $f --tail=$tail $component $@ | map-IDs.sh $mapFile"
+		echocolour $cmd
+		eval $cmd
 		;;
 	patch)
 		set -x

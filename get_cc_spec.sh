@@ -11,7 +11,8 @@ $0 OPTIONS
 
 By default, this gives you the password of the specified CC.
 
- --get-ip = get the ip instead.
+ --get-ip  = get the ip instead.
+ --get-vms = get name of VMS
 
 SEARCH FOR THESE VALUES
 -c|-cc|--cc|--cloud-connector <CC name or IP>
@@ -39,6 +40,7 @@ CC= # select CC name
 ip= # select this IP
 cached=true # If false, ask the VMS for the password
 getIP=false # If true, get the IP of the CC. If false, get the password."
+getVms=false # If true, get the vms name of the CC.
 
 # Special actions to do with the selected CC.
 forcedPassword= # store this password
@@ -57,6 +59,9 @@ while [[ $# -gt 0 ]]; do
 			;;
 		--get-ip)
 			getIP=true
+			;;
+		--get-vms)
+			getVms=true
 			;;
 		-c|-cc|--cc|--cloud-connector)
 			CC=$1
@@ -277,6 +282,11 @@ function __getPasswordFromVMS {
 # Check if we should return the IP rather than the password.
 if [[ $getIP = true ]]; then
 	__getIP
+	exit 0
+fi
+
+if [[ $getVms = true ]]; then
+	__getVMSName | sed -e 's/\(.*\)\..*\.aware..*.com/\1/'
 	exit 0
 fi
 
