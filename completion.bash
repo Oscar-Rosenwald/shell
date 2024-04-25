@@ -93,7 +93,7 @@ __cc-action_completions()
 	elif [[ $prevOption = --reboot ]]; then
 		COMPREPLY=($(compgen -W "platform ${components[*]}" -- "$lastWord"))
 	else
-		COMPREPLY=($(compgen -W "-ha -h -v -l -db -nodb -t --no-map -f -p --patch --reboot -sh ${components[*]}" -- "$lastWord"))
+		COMPREPLY=($(compgen -W "-ha -h -v -l -db -nodb -t --no-map -f -p --patch --reboot -sh platform ${components[*]}" -- "$lastWord"))
 	fi	
 }
 complete -F __cc-action_completions cc-action.sh

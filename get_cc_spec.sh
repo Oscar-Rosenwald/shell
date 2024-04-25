@@ -64,7 +64,11 @@ while [[ $# -gt 0 ]]; do
 			getVms=true
 			;;
 		-c|-cc|--cc|--cloud-connector)
-			CC=$1
+			CC=${1:-}
+			if [[ -z $CC ]]; then
+				echo "No CC given with ip '$ip'. (Perhaps the CC isn't in the password file yet. Add it by calling $(basename $0) -ip <IP>.)" >&2
+				exit 1
+			fi
 			shift
 			;;
 		-ip)
@@ -100,7 +104,7 @@ while [[ $# -gt 0 ]]; do
 			exit 0
 			;;
 		*)
-			echo "Unrecognised option $opt"
+			echo "Unrecognised option $opt" >&2
 			printHelp
 			exit 1
 			;;
@@ -169,7 +173,7 @@ function __storeAttributes {
 # appears in the password file.
 if [[ -z $CC ]]; then
 	if [[ -z $ip ]]; then
-		echo "Give me a cloud connector name or an ip. I have neither"
+		echo "Give me a cloud connector name or an ip. I have neither" >&2
 		exit 1
 	fi
 	CC=$(__getCCNameFromIP)
@@ -177,12 +181,20 @@ if [[ -z $CC ]]; then
 	if [[ -z $CC ]]; then
 		read -p "New CC name: " CC
 		__storeAttributes "$ip" "$CC" "$forcedPassword" "$vms"
+		if [[ -z $forcedPassword ]]; then
+			echo "No password known for CC $CC" >&2
+			exit 1
+		fi
 		echo $forcedPassword
 		exit 0
 	fi
-elif [[ " $CC " =~ $ipv4_regex ]]; then
+elif [[ $CC =~ $ipv4_regex ]]; then
 	ip=$CC
 	CC=$(__getCCNameFromIP)
+	if [[ -z $CC ]]; then
+		echo "IP $ip does not appear in the password file. Add it using the --store-ip option" >&2
+		exit 1
+	fi
 fi
 
 # Args:
@@ -264,19 +276,19 @@ function __getPasswordFromVMS {
 
 	cookie=$(python3 $getCookieScript $vms)
 	if [[ -z $cookie ]]; then
-		echo "Cannot find the cookie. You must be logged in in your browser to VMS $vms"
+		echo "Cannot find the cookie. You must be logged in in your browser to VMS $vms" >&2
 		exit 1
 	fi
 
 	nodeId=$(curl --cookie va=$cookie -s https://$vms/api/v1/nodes 2>/tmp/.curl1.log | jq '.[] | select(.network_interfaces != null) | .network_interfaces | to_entries[] | select(.value != null and .value.current_ip==''"'$IP'"'') | .value.node_id' | sed 's/"//g')
 	if [[ -z $nodeId ]]; then
-		echo "VMS $vms doesn't seem to have a node matching ip $IP"
+		echo "VMS $vms doesn't seem to have a node matching ip $IP" >&2
 		exit 1
 	fi
 
 	password=$(curl --cookie va=$cookie https://$vms/api/v1/nodes/"$nodeId"/credentials 2>/tmp/.curl2.log | jq '.password' | sed 's/"//g')
 	if [[ -z $password ]]; then
-		echo "VMS $vms gave us no password for node $nodeId"
+		echo "VMS $vms gave us no password for node $nodeId" >&2
 		exit 1
 	fi
 
@@ -309,7 +321,7 @@ fi
 
 actual=$(__getPasswordFromVMS)
 if [[ -z $actual ]]; then
-	echo "CC $CC (or ip $ip) have no password on VMS '"$(__getVMSName)"'"
+	echo "CC $CC (or ip $ip) have no password on VMS '"$(__getVMSName)"'" >&2
 	exit 1
 fi
 

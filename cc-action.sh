@@ -167,22 +167,25 @@ if [[ ! -z "$usePassword" ]] && [[ $forceNoPassword = false ]]; then
 				mapFile=$vmsName
 			fi
 
-			shellCmd="logs -t ${lines:-100} -f $component"
+			f=-f
+			[[ $less = true ]] && f=
+
+			shellCmd="logs -t ${lines:-100} $f $component"
 
 			if [[ $component = platform ]]; then
-				shellCmd="shell -c \"tail -n ${lines:-100} /var/lob/supervisor/platform.log\""
+				shellCmd="shell -c \"tail -n ${lines:-100} $f /var/log/supervisor/platform.log\""
 			fi
 			
 			cmd="sshpass -p $usePassword ssh -o StrictHostKeyChecking=no \"$user@$which\" '$shellCmd'"
 
-			if [[ ! -z $mapFile ]]; then
+			if [[ ! -z $mapFile ]] && [[ $mapFile != none ]]; then
 				cmd+=" | map-IDs.sh $mapFile"
 			fi
 			if [[ $less = true ]]; then
 				cmd+=" | less"
 			fi
 
-			echocolour $cmd
+			echocolour $cmd >&2
 			eval $cmd
 			;;
 		sh)
