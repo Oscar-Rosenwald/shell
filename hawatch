@@ -167,7 +167,7 @@ function ccLog {
 		mapFile=$vmsName
 	fi
 
-	__genericCCLog "cc-action.sh $node -n $component $@"
+	__genericCCLog "cc-action.sh $node --no-map -n $component $@"
 }
 
 function fileLog {
@@ -185,14 +185,16 @@ function fileLog {
 		fi
 	else
 		# Either nogrep or grep must be set, so no need to check if '-z $grep' here.
-		cmd="map-IDs.sh '$mapFile' \"logs '$node' --no-tail"
+		cmd="logs '$node' --no-tail"
 
-		cmd+=" | grep -a -i --color=always $grep"
+		if [[ ! -z $grep ]]; then
+			cmd+=" | grep -a -i --color=always $grep"
+		fi
 
 		if [[ -z $less ]]; then
-			cmd+=" | tail -n 100\""
+			cmd+=" | tail -n 100"
 		else
-			cmd+=' | less -S -r \"'
+			cmd+=' | less -S -r'
 		fi
 	fi
 
