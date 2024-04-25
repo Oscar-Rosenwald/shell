@@ -40,7 +40,7 @@ port=5432
 new=false # If true, get new password for the CC.
 haMode=false
 less=false
-debug=false
+debug=
 mapFile=
 
 while [[ "$#" -gt 0 ]]; do
@@ -53,7 +53,7 @@ while [[ "$#" -gt 0 ]]; do
 			shift
 			;;
 		--debug)
-			debug=true
+			debug=--debug
 			;;
 		-ha)
 			haMode=true
@@ -116,7 +116,7 @@ while [[ "$#" -gt 0 ]]; do
 	shift
 done
 
-if [[ $debug = true ]]; then
+if [[ ! -z $debug ]]; then
 	set -x
 fi
 
@@ -129,7 +129,7 @@ fi
 
 
 if [[ ! -z $password ]]; then
-	get_cc_spec.sh -c $which -p $password
+	get_cc_spec.sh -c $which -p $password $debug
 fi
 
 # Check if we're getting a new password
@@ -139,8 +139,8 @@ else
 	new=
 fi
 
-which=$(get_cc_spec.sh --get-ip -c $which)
-usePassword=$(get_cc_spec.sh -c $which $new)
+which=$(get_cc_spec.sh --get-ip -c $which $debug)
+usePassword=$(get_cc_spec.sh -c $which $new $debug)
 echo "Using IP $which and password '$usePassword'"
 
 [[ $whatToDo = sh ]] && [[ $component = platform ]] && whatToDo=vplat
@@ -162,7 +162,7 @@ if [[ ! -z "$usePassword" ]] && [[ $forceNoPassword = false ]]; then
 			sshpass -p $usePassword ssh -o StrictHostKeyChecking=no -t "$user@$which" "shell -ic \"docker-compose exec db psql -U postgres -p $port\""
 			;;
 		log)
-			vmsName=$(get_cc_spec.sh -c "$which" --get-vms)
+			vmsName=$(get_cc_spec.sh -c "$which" --get-vms $debug)
 			if [[ ! -z $vmsName ]] && [[ -z $mapFile ]]; then
 				mapFile=$vmsName
 			fi
