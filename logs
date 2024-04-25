@@ -12,6 +12,7 @@ if [[ $1 = -h ]]; then
 	echo "c         -> toggle inclusion of colour. Default is to give coloured output. Using c once will disable it on strings going forward. Using c again will enable it for the following strings, and so on."
 	echo "in        -> include following file. Default is exclude."
 	echo "--no-tail -> Do not limit the output to any line number."
+	echo "--no-map  -> Do not map IDs onto names"
 	exit 0
 fi
 
@@ -24,6 +25,7 @@ declare -a inArray
 mappingDir=~/Private/mappings
 colour=true
 noTail=false
+noMap=false
 file=$1
 shift 1 # Exclusions from now on
 
@@ -37,6 +39,8 @@ while [[ $# -gt 0 ]]; do
 		else
 			colour=true
 		fi
+	elif [[ $line = --no-map ]]; then
+		noMap=true
 	elif [[ $line = --no-tail ]]; then
 		noTail=true
 	elif [[ "$line" != "in" ]]; then
@@ -83,24 +87,16 @@ if [[ ! -f $mappingFile ]]; then
 	construct-name-mappings.sh -vms $vmsName --source "$clusterTxt"
 fi
 
-while read mapping; do
-	id=$(echo $mapping | cut -d ':' -f 1)
-	name=$(echo $mapping | cut -d ':' -f 2)
-	replace+=" | sed ''/$id/s//"'`'"printf \"${CYAN}$name${NC}\""'`'"/g''"
-done < <(cat $mappingFile)
-
-command="cat $file $query $in"
-if [[ $colour = true ]]; then
-	for value in "${inArray[@]}"; do
-		command+=" | sed ''/$value/s//"'`'"printf \"${RED}$value${NC}\""'`'"/g''"
-	done
-fi
-
-command+=" $replace"
+command="cat $file $query $in $replace"
 
 if [[ $noTail = false ]]; then
 	command+=" | tail -n 100"
 fi
 
-set -x
+if [[ $noMap = false ]]; then
+	command+=" | map-IDs.sh $vmsName"
+fi
+
+newCmd="${command//$CYAN//}"
+echocolour "${newCmd//$NC//}"
 eval "$command"
