@@ -133,7 +133,7 @@ function __findLine {
 #   - 1 = occurance to search for in the password file
 #   - 2 = column
 function __findAttribute {
-	__findLine "$1" | cut -d: -f $2
+	__findLine "$1.*:.*:.*" | cut -d: -f $2
 }
 
 function __getIP {
@@ -152,7 +152,8 @@ function __getVMSName {
 	__findAttribute "$CC" 4
 }
 
-ipv4_regex="^\([0-9]\{1,3\}\.\)\{3\}[0-9]\{1,3\}\>"
+ipv4_regex="^([0-9]{1,3}\.){3}[0-9]{1,3}"
+ipv4_regex_grep="^\([0-9]\{1,3\}\.\)\{3\}[0-9]\{1,3\}"
 
 # Amend line in the password file
 #
@@ -162,10 +163,10 @@ ipv4_regex="^\([0-9]\{1,3\}\.\)\{3\}[0-9]\{1,3\}\>"
 #   - 3 = password
 #   - 4 = VMS name
 function __storeAttributes {
-	if ! grep -q "$ipv4_regex:$2" $passwordFile; then
+	if ! grep -q "$ipv4_regex_grep:$2" $passwordFile; then
 		echo "$1:$2:${3:-unknown}:${4:-}" >> $passwordFile
 	else
-		sed -i "s/.*$2.*/$1:$2:$3:$4/" $passwordFile
+		sed -i "s/.*$1.*:.*:.*/$1:$2:$3:$4/" $passwordFile
 	fi
 }
 
