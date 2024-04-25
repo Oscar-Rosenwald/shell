@@ -47,7 +47,10 @@ if [[ -f $mapFile ]]; then
 fi
 
 function applyMap {
-	cmd="echo '$@'"
+	# print="${@//\"/\\\"}"
+	print="${@//\'/\'\"\'\"\'}"
+	cmd="echo '$print'"
+
 	for id in ${!mappings[@]}; do
 		name=${mappings[$id]}
 		if [[ $debug = true ]]; then
