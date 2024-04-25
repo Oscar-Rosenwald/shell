@@ -105,11 +105,15 @@ case $whatToDo in
 		if [[ $follow = true ]]; then
 			f="-f"
 		fi
+		cmd="kubectl logs --context=$context --namespace=$namespace $pod $f --tail=$tail $component $@"
+
 		if [[ -z $mapFile ]]; then
 			mapFile=$vms
 		fi
+		if [[ $mapFile != none ]]; then
+			cmd+=" | map-IDs.sh $vms"
+		fi
 
-		cmd="kubectl logs --context=$context --namespace=$namespace $pod $f --tail=$tail $component $@ | map-IDs.sh $mapFile"
 		echocolour $cmd
 		eval $cmd
 		;;
