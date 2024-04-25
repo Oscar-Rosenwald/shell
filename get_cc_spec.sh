@@ -148,6 +148,8 @@ function __getVMSName {
 	__findAttribute "$CC" 4
 }
 
+ipv4_regex="^\([0-9]\{1,3\}\.\)\{3\}[0-9]\{1,3\}\>"
+
 # Amend line in the password file
 #
 # Args:
@@ -156,10 +158,12 @@ function __getVMSName {
 #   - 3 = password
 #   - 4 = VMS name
 function __storeAttributes {
-	sed -i "s/.*$2.*/$1:$2:$3:$4/" $passwordFile
+	if ! grep -q "$ipv4_regex:$2" $passwordFile; then
+		echo "$1:$2:${3:-unknown}:${4:-}" >> $passwordFile
+	else
+		sed -i "s/.*$2.*/$1:$2:$3:$4/" $passwordFile
+	fi
 }
-
-ipv4_regex="\<([0-9]{1,3}\.){3}[0-9]{1,3}\>"
 
 # Ensure the CC variable is filled with the name of the cloud connector as it
 # appears in the password file.
