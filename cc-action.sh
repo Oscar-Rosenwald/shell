@@ -182,7 +182,7 @@ if [[ ! -z "$usePassword" ]] && [[ $forceNoPassword = false ]]; then
 				cmd+=" | map-IDs.sh $mapFile"
 			fi
 			if [[ $less = true ]]; then
-				cmd+=" | less"
+				cmd+=" | less -r -S"
 			fi
 
 			echocolour $cmd >&2
@@ -190,7 +190,7 @@ if [[ ! -z "$usePassword" ]] && [[ $forceNoPassword = false ]]; then
 			;;
 		sh)
 			do=bash
-			[[ $component = mgmt ]] && do=sh
+			[[ $component = mgmt || $component = ha ]] && do=sh
 
 			set -x
 			sshpass -p $usePassword ssh -o StrictHostKeyChecking=no -t "$user@$which" "shell -ic \"docker-compose exec -it $component $do\""
