@@ -110,6 +110,7 @@ exit 0 # Exit here because I haven't implemented the screen detection yet.
 # =======================================================================
 
 # TODO unfinished until I find out how to name a screen. xrandr doesn't differentiate between my home and my work screens.
+# Screen at home: HDMI-1-0 connected 3840x2160+0+0
 
 # Choose the background image with the correct dimensions depending on the screens
 
