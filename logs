@@ -22,7 +22,7 @@ replace=
 
 declare -a inArray
 
-mappingDir=~/Private/mappings
+mappingDir=$MAPS
 colour=true
 noTail=false
 noMap=false

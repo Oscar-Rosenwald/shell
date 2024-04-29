@@ -40,7 +40,7 @@ done
 
 [[ -z $vmsName ]] && echo "No target file given." && exit 1
 
-targetFile=~/Private/mappings/$vmsName
+targetFile=$MAPS/$vmsName
 
 if [[ -f $targetFile ]]; then
 	echo "Vms $vmsName already has a file. Manual intervention required"

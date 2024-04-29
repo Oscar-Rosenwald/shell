@@ -17,7 +17,7 @@ Parse output from stdin and map strings in the VMS file to given replacements.
 EOF
 }
 
-mapDir=~/Private/mappings
+mapDir=$MAPS
 defaultNameMapFile=ha
 mapFile=
 debug=false

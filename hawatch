@@ -36,7 +36,7 @@ ANY_ORDER #2: If mode is 'file', pipe output to less -S. Default is false.
 
 ANY_ORDER #3:
   - map    = Point to file which contains the mappings between IDs and names of the VMS.
-             Enabled by default in run mode with initial value ~/Private/mappings/ha.
+             Enabled by default in run mode with initial value $MAPS/ha.
              In cc mode, we use the VMS name if known and --map is not given.
   - no-map = Inhibit the automatic VMS name usage in cc mode.
 

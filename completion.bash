@@ -3,13 +3,22 @@
 components=("mgmt" "db" "access" "norm" "streamer" "ui" "authenticator" "store" "router")
 vmses=("v-cloud" "tom-not-tom-2" "feature-cc-resiliency-be" "feature-cc-resiliency" "hybrid-cloud-test")
 _passwordFile=~/Private/passwords/aws
-mappingsDir=~/Private/mappings/
+mappingsDir=$MAPS
 
 # Completion functions cannot do [[ -f ]] on paths starting with '~/'
 # _parseFile changes ~/ in $1 to the absolute path.
 function _parseFile {
 	file=$1
 	echo ${file/~\//\/home\/lightningman\/}
+}
+
+# Get cached VMS names. Returns an array.
+function __getVmsNames {
+	local array
+	for f in $mappingsDir/*; do
+		array+=($(basename $f))
+	done
+	echo "${array[*]}"
 }
 
 _branch_completions()
@@ -161,7 +170,7 @@ __vms-action_completions()
 	lastWord=${COMP_WORDS[COMP_CWORD]} # Last word before the cursor, even if it isn't finished
 
 	if [[ $COMP_CWORD = 1 ]]; then
-		COMPREPLY=($(compgen -W "${vmses[*]}" -- "$lastWord"))
+		COMPREPLY=($(compgen -W "$(__getVmsNames)" -- "$lastWord"))
 	elif [[ $prevOption = --patch ]]; then
 		COMPREPLY=($(compgen -W "${components[*]}" -- "$lastWord"))
 	elif [[ $prevOption = -t ]] || [[ $prevOption = -c ]] || [[ $prevOption = -n ]]; then
@@ -169,7 +178,7 @@ __vms-action_completions()
 	else
 		# This comment is here because tree sitter has a problem for some reason
 		# if it isn't.
-		common=("-t" "-l" "-n" "-c" "-h" "--help" "--patch" "-db" "--debug")
+		common=("-t" "-l" "-n" "-c" "-h" "--help" "--patch" "-db" "--debug" "--no-map")
 		if [[ $COMP_CWORD = 2 ]]; then
 			common+=("${components[*]}")
 		fi
@@ -185,6 +194,6 @@ __get-cookie_completions()
 
 	lastWord=${COMP_WORDS[COMP_CWORD]} # Last word before the cursor, even if it isn't finished
 
-	COMPREPLY=($(compgen -W "${vmses[*]}" -- "$lastWord"))
+	COMPREPLY=($(compgen -W "$(__getVmsNames)" -- "$lastWord"))
 }
 complete -F __get-cookie_completions get-cookie
