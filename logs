@@ -18,7 +18,6 @@ fi
 
 query=""
 in=
-replace=
 
 declare -a inArray
 
@@ -53,13 +52,6 @@ while [[ $# -gt 0 ]]; do
 	shift 1
 done
 
-function deSpace {
-	arg=$1
-	arg="${arg#"${arg%%[![:space:]]*}"}"
-	arg="${arg%"${arg##*[![:space:]]}"}"
-	echo $arg
-}
-
 logdir="$(dirname "$(realpath $file)")"
 while [[ ! -f "$logdir/cluster.txt" && "$logdir" != / ]]; do
 	logdir="$(dirname "$logdir")"
@@ -87,7 +79,12 @@ if [[ ! -f $mappingFile ]]; then
 	construct-name-mappings.sh -vms $vmsName --source "$clusterTxt"
 fi
 
-command="cat $file $query $in $replace"
+echo "Re-grepping ${inArray[@]}"
+for g in "${inArray[@]}"; do
+	in+=" | grep '$g' --colour=always"
+done
+
+command="cat $file $query $in"
 
 if [[ $noTail = false ]]; then
 	command+=" | tail -n 100"
