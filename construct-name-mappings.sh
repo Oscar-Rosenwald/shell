@@ -4,13 +4,18 @@ set -euo pipefail
 IFS=$'\n\t'
 
 vmsName=
+context=
 sourceFile=./cluster.txt
 
 function printHelp {
 	cat <<EOF
-$(basename $0) -vms <vms_name> [-s|--source <file>]
+$(basename $0)
+  -vms <vms_name> [-s|--source <file>]
+  --context <context> 
 
 Construct an ID-to-name mapping and store it in the target file named after the VMS. Default for a source file is $(realpath $sourceFile).
+
+If --context is given, store that value for future reference. It is optional.
 EOF
 }
 
@@ -25,6 +30,9 @@ while [[ $# -gt 0 ]]; do
 		-vms)
 			vmsName=$1
 			;;
+		--context)
+			context=$1
+			;;
 		-h|--help)
 			printHelp
 			exit 0
@@ -38,13 +46,32 @@ while [[ $# -gt 0 ]]; do
 	shift
 done
 
-[[ -z $vmsName ]] && echo "No target file given." && exit 1
+[[ -z $vmsName ]] && echo "No VMS name given." && exit 1
 
 targetFile=$MAPS/$vmsName
 
+function storeContext {
+	if [[ ! -f $targetFile ]] || ! grep -q "^Context:" $targetFile; then
+		echo "Context:$context" >> $targetFile
+	else
+		sed -i "s/Context:.*/Context:$context/" $targetFile
+	fi
+}
+
 if [[ -f $targetFile ]]; then
-	echo "Vms $vmsName already has a file. Manual intervention required"
-	exit 1
+	if [[ ! -z $context ]]; then
+		storeContext
+		echo "Stored context $context. Nothing else to do, because the file already exists."
+		exit 0
+	else
+		echo "Vms $vmsName already has a file. Manual intervention required."
+		exit 1
+	fi
+fi
+
+if [[ ! -z $context ]]; then
+	storeContext
+	echo "Stored context $context."
 fi
 
 function deSpace {
@@ -62,7 +89,7 @@ while read SG; do
 	name=$(deSpace $(echo $SG | cut -d'|' -f 3))
 	id=$(deSpace $(echo $SG | cut -d'|' -f 2))
 
-	if [[ -z "${SGNames[$name]:-}" ]]; then
+	if [[ "${SGNames[$name]:+empty}" ]]; then
 		SGNames[$name]=true
 		echo "$id:$name" >> $targetFile
 	fi

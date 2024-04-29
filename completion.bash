@@ -197,3 +197,27 @@ __get-cookie_completions()
 	COMPREPLY=($(compgen -W "$(__getVmsNames)" -- "$lastWord"))
 }
 complete -F __get-cookie_completions get-cookie
+
+__construct-name-mappings_complections()
+{
+	compopt +o default
+
+	lastWord=${COMP_WORDS[COMP_CWORD]}
+	prevOption=${COMP_WORDS[$((COMP_CWORD-1))]}
+
+	case $prevOption in
+		-vms)
+			COMPREPLY=($(compgen -W "$(__getVmsNames)" -- "$lastWord"))
+			;;
+		-s|--source)
+			compopt -o default
+			;;
+		--context)
+			COMPREPLY=()
+			;;
+		*)
+			COMPREPLY=($(compgen -W "-vms -s --source --context" -- "$lastWord"))
+			;;
+	esac
+}
+complete -F __construct-name-mappings_complections construct-name-mappings.sh

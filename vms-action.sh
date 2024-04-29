@@ -27,11 +27,11 @@ EOF
 }
 
 namespace=clouddemo-vcloud-prod
-context=aw1
+context=
 whatToDo=log
 vms=
 follow=true
-tail=500
+tail=100
 debug=false
 mapFile=
 
@@ -85,6 +85,17 @@ fi
 
 ([[ $whatToDo = log ]] | [[ $whatToDo = patch ]]) && [[ -z ${component+x} ]] && component=mgmt
 
+# Get the cached context if we have one.
+if [[ -z $context ]]; then
+	cachedFile=$MAPS/$vms
+	context=aw1 # Default
+	
+	if [[ -f $cachedFile ]] && grep -q "^Context:" $cachedFile; then
+		context=$(grep "^Context:" $cachedFile | cut -d ':' -f 2)
+		echo "Using cached context"
+	fi
+fi
+
 __getPodName() {
 	g="-v"
 	[[ ${1:-} = db ]] && g=''
@@ -112,6 +123,9 @@ case $whatToDo in
 		fi
 		if [[ $mapFile != none ]]; then
 			cmd+=" | map-IDs.sh $vms"
+		fi
+		if [[ $follow = false ]]; then
+			cmd+=" | less -rS"
 		fi
 
 		echocolour $cmd

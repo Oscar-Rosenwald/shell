@@ -42,6 +42,12 @@ if [[ -f $mapFile ]]; then
 	while read line; do
 		id=$(echo $line | cut -d ':' -f 1)
 		name=$(echo $line | cut -d ':' -f 2)
+		
+		if [[ $id = Context ]]; then
+			# This is a line which cached where the VMS lives. Ignore it.
+			continue
+		fi
+
 		mappings[$id]=$name
 	done < <(cat $mapFile)
 fi
@@ -56,6 +62,7 @@ function applyMap {
 		if [[ $debug = true ]]; then
 			echo "Mapping $id onto $name"
 		fi
+		
 		cmd+=" | sed -u ''/$id/s//"'`'"printf \"${CYAN}$name${NC}\""'`'"/g''"
 	done
 	eval $cmd
