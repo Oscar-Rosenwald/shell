@@ -6,42 +6,32 @@ IFS=$'\n\t'
 
 printHelp () {
 cat <<EOF
-$0 <1-4> [-p password] [user] [-n]
-$0 <ip>  ---||---
+$0 <ip> -p <password> [user]
 
 If password is given (before or after user), store it in the password file. Use -n to force-update the password of the CC.
 
 Defaults:
 - user  = admin
-- which = 1
 EOF
 }
 
 password=
-forceNoPassword=false
 user=
-which=
-new=false # true if we want to force updating the CC's password from the VMS.
+nodeIp=
 
 while [[ "$#" -gt 0 ]]; do
 	case "$1" in
 		-p)
-			password="$2"
-			if [[ -z "$password" ]]; then
-				forceNoPassword=true
-			fi
+			password="${2:-}"
 			shift
-			;;
-		-n)
-			new=true
 			;;
 		-h|--help)
 			printHelp
 			exit 0
 			;;
 		*)
-			if [[ -z "$which" ]]; then
-				which="$1"
+			if [[ -z "$nodeIp" ]]; then
+				nodeIp="$1"
 			elif [[ -z "$user" ]]; then
 				user="$1"
 			else
@@ -53,32 +43,14 @@ while [[ "$#" -gt 0 ]]; do
 	shift
 done
 
-if [[ -z "$which" ]]; then
-	which=AWS1
-fi
 if [[ -z "$user" ]]; then
 	user=admin
 fi
 
-if [[ ! -z $password ]]; then
-	get_cc_spec.sh -c $which -p $password
-fi
-
-# Check if we're getting a new password
-if [[ $new = true ]]; then
-	new='--no-cache'
-else
-	new=
-fi
-
-which=$(get_cc_spec.sh --get-ip -c $which)
-usePassword=$(get_cc_spec.sh -c $which $new)
-
-if [[ ! -z "$usePassword" ]] && [[ $forceNoPassword = false ]]; then
+if [[ ! -z "$password" ]]; then
 	set -x
-	sshpass -p $usePassword ssh "$user@$which"
+	sshpass -p $password ssh "$user@$nodeIp"
 else
 	set -x
-	ssh "$user@$which"
+	ssh "$user@$nodeIp"
 fi
-

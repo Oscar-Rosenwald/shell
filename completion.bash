@@ -2,8 +2,18 @@
 
 components=("mgmt" "db" "access" "norm" "streamer" "ui" "authenticator" "store" "router")
 vmses=("v-cloud" "tom-not-tom-2" "feature-cc-resiliency-be" "feature-cc-resiliency" "hybrid-cloud-test")
-_passwordFile=~/Private/passwords/aws
 mappingsDir=$MAPS
+_passwordFile=$CCs
+
+function _getCcNames {
+	if [[ ${1:-} = proper ]]; then
+		sed 's/:.*:\(.*\):.*:/\1/' $_passwordFile
+	elif [[ ${1:-} = vms ]]; then
+		sed 's/:.*:.*:\(.*\):/\1/' $_passwordFile | uniq
+	else
+		sed 's/:\(.*\):.*:.*:/\1/' $_passwordFile
+	fi
+}
 
 # Completion functions cannot do [[ -f ]] on paths starting with '~/'
 # _parseFile changes ~/ in $1 to the absolute path.
@@ -57,32 +67,6 @@ _analyse_logs_completions()
 
 complete -F _analyse_logs_completions analyse_logs.sh
 
-_awssh_completions()
-{
-	# at the top of the function to disable default
-	compopt +o default
-
-	lastWord=${COMP_WORDS[COMP_CWORD]}
-
-	[[ $COMP_CWORD = 1 ]] && COMPREPLY=($(compgen -W "$(sed 's/.*:\(.*\):.*:.*/\1/' $_passwordFile)" -- "$lastWord"))
-}
-complete -F _awssh_completions awssh
-
-_cc-patch_completions()
-{
-	# disable default completion
-	compopt +o default
-
-	lastWord=${COMP_WORDS[COMP_CWORD]}	  # Last word before cursor, even if it isn't finished
-
-	if [[ $COMP_CWORD = 1 ]]; then
-		COMPREPLY=($(compgen -W "$(sed 's/.*:\(.*\):.*:.*/\1/' $_passwordFile)" -- "$lastWord"))
-	else
-		COMPREPLY=($(compgen -W "-h -p -f ${components[*]}" -- "$lastWord"))
-	fi	
-}
-complete -F _cc-patch_completions cc-patch.sh
-
 __cc-action_completions()
 {
 	# disable default completion
@@ -92,44 +76,30 @@ __cc-action_completions()
 	prevOption=${COMP_WORDS[considering]} # Last full word before cursor given
 	lastWord=${COMP_WORDS[COMP_CWORD]}	  # Last word before cursor, even if it isn't finished
 
-	if [[ $COMP_CWORD = 1 ]]; then
-		COMPREPLY=($(compgen -W "$(sed 's/.*:\(.*\):.*:.*/\1/' $_passwordFile)" -- "$lastWord"))
-	elif [[ $prevOption = -t ]]; then
-		# Enter number to tail.
-		COMPREPLY=()
-	elif [[ $prevOption = -sh ]] || [[ $prevOption = --patch ]]; then
-		COMPREPLY=($(compgen -W "${components[*]}" -- "$lastWord"))
-	elif [[ $prevOption = --reboot ]]; then
-		COMPREPLY=($(compgen -W "platform ${components[*]}" -- "$lastWord"))
-	else
-		COMPREPLY=($(compgen -W "-ha -h -v -l -db -nodb -t --no-map -f -p --patch --reboot -sh platform ${components[*]}" -- "$lastWord"))
-	fi	
-}
-complete -F __cc-action_completions cc-action.sh
+	[[ $COMP_CWORD = 1 ]] && COMPREPLY=($(compgen -W "$(_getCcNames)" -- "$lastWord")) && return
 
-__get_cc_spec_completions()
-{
-	# disable default completion
-	compopt +o default
-
-	considering=$((COMP_CWORD-1))
-	prevOption=${COMP_WORDS[considering]} # Last full word before cursor given
-	lastWord=${COMP_WORDS[COMP_CWORD]}	  # Last word before cursor, even if it isn't finished
-
-	case $prevOption in
-		-c|-cc|--cc|--cloud-connector)
-			COMPREPLY=($(compgen -W "$(sed 's/.*:\(.*\):.*:.*/\1/' $_passwordFile)" -- "$lastWord"))
-			;;
-		-f|--file)
-			compopt -o default
+	case $prevWord in
+		-db|-nodb)
+			# Port number
 			COMPREPLY=()
 			;;
+		-t)
+			# Tail number
+			COMPREPLY=()
+			;;
+		-sh|--patch)
+			# TODO What about platform?
+			COMPREPLY=($(compgen -W "${components[*]}" -- "$lastWord"))
+			;;
+		--reboot)
+			COMPREPLY=($(compgen -W "platform ${components[*]}" -- "$lastWord"))
+			;;
 		*)
-			COMPREPLY=($(compgen -W "-h --help --no-cache -p --password -vms --n -vms-name --store-ip -f --file --cc-name -c --cloud-connector" -- "$lastWord"))
+			COMPREPLY=($(compgen -W "-ha -h -v -l -db -nodb -t --no-map -f -p --patch --reboot -sh platform ${components[*]}" -- "$lastWord"))
 			;;
 	esac
 }
-complete -F __get_cc_spec_completions get_cc_spec.sh
+complete -F __cc-action_completions cc-action.sh
 
 __hawatch_completions()
 {
@@ -142,7 +112,7 @@ __hawatch_completions()
 	if [[ $COMP_CWORD = 1 ]]; then
 		compopt -o default
 		# Complete stored cloud connectors
-		COMPREPLY=($(compgen -W "$(sed 's/.*:\(.*\):.*:.*/\1/' $_passwordFile )" -- "$lastWord"))
+		COMPREPLY=($(compgen -W "$(_getCcNames)" -- "$lastWord"))
 		# Also complete files. Which will be used determines what mode hawatch will run in.
 		COMPREPLY+=($(compgen -W "$(find $(dirname $(_parseFile ${lastWord:-.})) -type f -maxdepth 1 -printf '%P\n' 2>/dev/null)" -- "$lastWord"))
 	elif [[ $prevOption = --map ]]; then
@@ -221,3 +191,33 @@ __construct-name-mappings_complections()
 	esac
 }
 complete -F __construct-name-mappings_complections construct-name-mappings.sh
+
+__get-cc-spec_complections()
+{
+	gets=("--get-ip" "--get-name" "--get-vms" "--get-proper-name" "--get-password")
+	sets=("--new" "--store-name" "--store-proper-name" "--store-vms")
+	params=("-c" "--cloud-connector" "--proper-name" "--vms")
+	other=("-h" "--help" "--debug")
+
+	prevWord=${COMP_WORDS[$((COMP_CWORD-1))]}
+	lastWord=${COMP_WORDS[$COMP_CWORD]}
+
+	case $prevWord in
+		-c|--cloud-connector)
+			COMPREPLY=($(compgen -W "$(_getCcNames)" -- "$lastWord"))
+			;;
+		--proper-name)
+			COMPREPLY=($(compgen -W "$(_getCcNames proper)" -- "$lastWord"))
+			;;
+		--vms)
+			COMPREPLY=($(compgen -W "$(_getCcNames vms)" -- "$lastWord"))
+			;;
+		--new|--store-name|--store-proper-name|--store-vms)
+			COMPREPLY=()
+			;;
+		*)
+			COMPREPLY=($(compgen -W "${gets[*]} ${sets[*]} ${params[*]} ${others[*]}" -- "$lastWord"))
+			;;
+	esac
+}
+complete -F __get-cc-spec_complections get-cc-spec.sh
