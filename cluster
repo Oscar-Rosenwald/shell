@@ -1,18 +1,25 @@
 #!/usr/bin/env bash
 
-function cluster_log {
-	node=${1:-1}
+function clusterLog {
+	node=$(__printWordNumber ${1:-1})
 	component=${2:-mgmt}
+
 	[[ $component = db ]] && component=postgres
 	tail --retry -F -n 100 ~/cluster/$node/$component.txt
 }
 
-function cluster_db {
-	port=2
-	if [[ ${1:-1} = 2 ]]; then
-		port=3
+
+function dbCluster {
+	container=$(__printWordNumber ${1:-1})
+	port=$((5432 + ($container - 1) * 4))
+	db=local
+
+	if [[ ${2:-} = remote ]]; then
+		db=remote
+		port=$(($port + 1))
 	fi
-
-	psql "host=localhost user=postgres dbname=vaionmgmt port=543$port"
+	
+	echocolour "Entering $db DB of postgres_$container on port $port"
+	
+	docker exec -it postgres_$container psql -U postgres -d vaionmgmt -p $port
 }
-

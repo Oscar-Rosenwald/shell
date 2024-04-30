@@ -158,7 +158,7 @@ function __genericCCLog {
 
 function runClusterLog {
 	mapFile=ha
-	__genericCCLog "cluster_log $node $component"
+	__genericCCLog "clusterLog $node $component"
 }
 
 function ccLog {

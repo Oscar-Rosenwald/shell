@@ -31,6 +31,40 @@ function __getVmsNames {
 	echo "${array[*]}"
 }
 
+# Prints a digit as a word. If more digits are passed, or if arg 1 isn't a
+# digit, prints arg 1.
+function __printNumberWord {
+	case $1 in
+		0) echo zero	;;
+		1) echo one		;;
+		2) echo two		;;
+		3) echo three	;;
+		4) echo four	;;
+		5) echo five	;;
+		6) echo six		;;
+		7) echo seven	;;
+		8) echo eight	;;
+		9) echo nine	;;
+		*) echo $1		;;
+	esac
+}
+
+function __printWordNumber {
+	case $1 in
+		zero)	echo 0	;;
+		one)	echo 1	;;
+		two)	echo 2	;;
+		three)	echo 3	;;
+		four)	echo 4	;;
+		five)	echo 5	;;
+		six)	echo 6	;;
+		seven)	echo 7	;;
+		eight)	echo 8	;;
+		nine)	echo 9	;;
+		*)		echo $1 ;;
+	esac
+}
+
 _branch_completions()
 {
 	index=${#COMP_WORDS[@]}
@@ -221,3 +255,33 @@ __get-cc-spec_complections()
 	esac
 }
 complete -F __get-cc-spec_complections get-cc-spec.sh
+
+__clusterLog_completions() {
+	lastWord=${COMP_WORDS[$COMP_CWORD]}
+	
+	case $COMP_CWORD in
+		1)
+			COMPREPLY=($(compgen -W "$(while read p; do [[ ! -z $p ]] && __printNumberWord $p; done < <(find ~/cluster/ -type d -maxdepth 1 -printf '%P\n' 2>/dev/null))" -- "$lastWord"))
+			;;
+		*)
+			dir=${COMP_WORDS[1]}
+			COMPREPLY=($(compgen -W "$(while read p; do echo $p | sed 's/.txt//'; done < <(find ~/cluster/`__printWordNumber $dir`/ -name "*.txt" -printf '%P\n' 2>/dev/null))" -- "$lastWord"))
+			;;
+	esac
+}
+complete -F __clusterLog_completions clusterLog
+
+__dbCluster_completions()
+{
+		lastWord=${COMP_WORDS[$COMP_CWORD]}
+	
+	case $COMP_CWORD in
+		1)
+			COMPREPLY=($(compgen -W "$(while read p; do [[ ! -z $p ]] && __printNumberWord $p; done < <(find ~/cluster/ -type d -maxdepth 1 -printf '%P\n' 2>/dev/null))" -- "$lastWord"))
+			;;
+		*)
+			COMPREPLY=($(compgen -W "remote local" -- "$lastWord"))
+			;;
+	esac
+}
+complete -F __dbCluster_completions dbCluster

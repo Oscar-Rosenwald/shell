@@ -6,7 +6,7 @@ IFS=''
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-# Load the cluster_ functions
+# Load the cluster functions
 source ~/shell/cluster
 
 function printHelp {
