@@ -5,9 +5,7 @@ IFS=$'\n\t'
 
 printHelp () {
 cat <<EOF
-$0 <1-4|ip> [component] [-p password] [-n] [user]
-
-If password is given, store it in the password file. -n mean get new password and store it.
+$0 <ip> [component] -p password [user]
 
 Defaults:
 - user      = admin
@@ -15,32 +13,24 @@ Defaults:
 EOF
 }
 
-password=
-forceNoPassword=false
 user=
 component=
-which=
-new=false # If true, get new password for the CC.
+nodeIp=
+password=
 
 while [[ "$#" -gt 0 ]]; do
 	case "$1" in
 		-p)
-			password="$2"
-			if [[ -z "$password" ]]; then
-				forceNoPassword=true
-			fi
+			password="${2:-}"
 			shift
-			;;
-		-n)
-			new=true
 			;;
 		-h|--help)
 			printHelp
 			exit 0
 			;;
 		*)
-			if [[ -z "$which" ]]; then
-				which="$1"
+			if [[ -z "$nodeIp" ]]; then
+				nodeIp="$1"
 			elif [[ -z "$component" ]]; then
 				component="$1"
 			elif [[ -z "$user" ]]; then
@@ -61,21 +51,6 @@ if [[ -z "$user" ]]; then
 	user=admin
 fi
 
-if [[ ! -z $password ]]; then
-	get_cc_spec.sh -c $which -p $password
-fi
-
-# Check if we're getting a new password
-if [[ $new = true ]]; then
-	new='--no-cache'
-else
-	new=
-fi
-
-which=$(get_cc_spec.sh --get-ip -c $which)
-usePassword=$(get_cc_spec.sh -c $which $new)
-echo "Using IP $which and password '$usePassword'"
-
 function patch {
 	build-docker-component.sh $component
 
@@ -84,12 +59,12 @@ function patch {
 
 	set -x 
 
-	sshpass -p $usePassword scp "$file" "$user@$which:/tmp/"
-	sshpass -p $usePassword ssh "$user@$which" -C "shell -c \"docker-compose rm -f -s $component && docker load -i $file && rm $file && docker tag $tag $component:latest && docker-compose up -d $component\""
+	sshpass -p $password scp "$file" "$user@$nodeIp:/tmp/"
+	sshpass -p $password ssh "$user@$nodeIp" -C "shell -c \"docker-compose rm -f -s $component && docker load -i $file && rm $file && docker tag $tag $component:latest && docker-compose up -d $component\""
 }
 
-if [[ ! -z "$usePassword" ]] && [[ $forceNoPassword = false ]]; then
+if [[ ! -z "$password" ]]; then
 	patch
 else
-	update_component_docker.sh $which $component $user
+	update_component_docker.sh $nodeIp $component $user
 fi

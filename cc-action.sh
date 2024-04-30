@@ -5,11 +5,7 @@ IFS=$'\n\t'
 
 printHelp () {
 cat <<EOF
-$0 <1-4|IP> [-p password] [-db | -nodb | component-to-log [-ha] [-l] [-t num] [user] | -sh component | -v | --patch component | --reboot component ] [--debug]
-
-If password is given (before or after user), store it in the password file.
-
--n Force password retrieval from the VMS
+$0 <node-name> [-db | -nodb | component-to-log [-ha] [-l] [-t num] [user] | -sh component | -v | --patch component | --reboot component ] [--debug]
 
 -db   [port]  Log to vaionmgmt (on port if given)
 -nodb [port]  Log to postgres (on port if given)
@@ -31,13 +27,10 @@ By default, we try to map the output's IDs onto real names. use --no-map to disa
 EOF
 }
 
-password=
-forceNoPassword=false
 user=
-which=
+nodeName=
 whatToDo=log
 port=5432
-new=false # If true, get new password for the CC.
 haMode=false
 less=false
 debug=
@@ -45,13 +38,6 @@ mapFile=
 
 while [[ "$#" -gt 0 ]]; do
 	case "$1" in
-		-p)
-			password="$2"
-			if [[ -z "$password" ]]; then
-				forceNoPassword=true
-			fi
-			shift
-			;;
 		--debug)
 			debug=--debug
 			;;
@@ -91,16 +77,13 @@ while [[ "$#" -gt 0 ]]; do
 			lines=$2
 			shift
 			;;
-		-n)
-			new=true
-			;;
 		-h|--help)
 			printHelp
 			exit 0
 			;;
 		*)
-			if [[ -z "$which" ]]; then
-				which="$1"
+			if [[ -z "$nodeName" ]]; then
+				nodeName="$1"
 			elif [[ "$whatToDo" = log ]] || [[ $whatToDo = sh ]] || [[ $whatToDo = patch ]] || [[ $whatToDo = reboot ]]; then
 				component="$1"
 			elif ([[ $whatToDo = db ]] || [[ $whatToDo = nodb ]]) && [[ $1 =~ ^[0-9]+$ ]]; then
@@ -120,49 +103,34 @@ if [[ ! -z $debug ]]; then
 	set -x
 fi
 
-if [[ -z "$which" ]]; then
-	which=AWS1
-fi
 if [[ -z "$user" ]]; then
 	user=admin
 fi
 
 
-if [[ ! -z $password ]]; then
-	get_cc_spec.sh -c $which -p $password $debug
-fi
-
-# Check if we're getting a new password
-if [[ $new = true ]]; then
-	new='--no-cache'
-else
-	new=
-fi
-
-which=$(get_cc_spec.sh --get-ip -c $which $debug)
-usePassword=$(get_cc_spec.sh -c $which $new $debug)
-echo "Using IP $which and password '$usePassword'"
+nodeIp=$(get-cc-spec.sh -c $nodeName --get-ip $debug)
+password=$(get-cc-spec.sh -c $nodeName --get-password $debug)
 
 [[ $whatToDo = sh ]] && [[ $component = platform ]] && whatToDo=vplat
 [[ $whatToDo = reboot ]] && [[ -z ${component+x} ]] && component=platform
 
 if [[ $whatToDo = log ]] && [[ $haMode = true ]]; then
-	hawatch $which $component -cc -t ${lines:-100}
+	hawatch $nodeName $component -cc -t ${lines:-100}
 	exit 0
 fi
 
-if [[ ! -z "$usePassword" ]] && [[ $forceNoPassword = false ]]; then
+if [[ ! -z "$password" ]]; then
 	case $whatToDo in
 		db)
 			set -x
-			sshpass -p $usePassword ssh -o StrictHostKeyChecking=no -t "$user@$which" "shell -ic \"docker-compose exec -it db psql -U postgres -d vaionmgmt -p $port\""
+			sshpass -p $password ssh -o StrictHostKeyChecking=no -t "$user@$nodeIp" "shell -ic \"docker-compose exec -it db psql -U postgres -d vaionmgmt -p $port\""
 			;;
 		nodb)
 			set -x
-			sshpass -p $usePassword ssh -o StrictHostKeyChecking=no -t "$user@$which" "shell -ic \"docker-compose exec db psql -U postgres -p $port\""
+			sshpass -p $password ssh -o StrictHostKeyChecking=no -t "$user@$nodeIp" "shell -ic \"docker-compose exec db psql -U postgres -p $port\""
 			;;
 		log)
-			vmsName=$(get_cc_spec.sh -c "$which" --get-vms $debug)
+			vmsName=$(get-cc-spec.sh -c $nodeName --get-vms $debug)
 			if [[ ! -z $vmsName ]] && [[ -z $mapFile ]]; then
 				mapFile=$vmsName
 			fi
@@ -176,7 +144,7 @@ if [[ ! -z "$usePassword" ]] && [[ $forceNoPassword = false ]]; then
 				shellCmd="shell -c \"tail -n ${lines:-100} $f /var/log/supervisor/platform.log\""
 			fi
 			
-			cmd="sshpass -p $usePassword ssh -o StrictHostKeyChecking=no \"$user@$which\" '$shellCmd'"
+			cmd="sshpass -p $password ssh -o StrictHostKeyChecking=no \"$user@$nodeIp\" '$shellCmd'"
 
 			if [[ ! -z $mapFile ]] && [[ $mapFile != none ]]; then
 				cmd+=" | map-IDs.sh $mapFile"
@@ -193,21 +161,22 @@ if [[ ! -z "$usePassword" ]] && [[ $forceNoPassword = false ]]; then
 			[[ $component = mgmt || $component = ha ]] && do=sh
 
 			set -x
-			sshpass -p $usePassword ssh -o StrictHostKeyChecking=no -t "$user@$which" "shell -ic \"docker-compose exec -it $component $do\""
+			sshpass -p $password ssh -o StrictHostKeyChecking=no -t "$user@$nodeIp" "shell -ic \"docker-compose exec -it $component $do\""
 			;;
 		patch)
-			cc-patch.sh $which $component
+			echo "cc-patch.sh $nodeIp $component -p $password"
+			cc-patch.sh $nodeIp $component -p $password
 			;;
 		vplat)
-			awssh $which -p $usePassword
+			awssh $nodeIp -p $password
 			;;
 		reboot)
 			if [[ $component = platform ]]; then
 				set -x
-				sshpass -p $usePassword ssh -o StrictHostKeyChecking=no -t "$user@$which" "reboot"
+				sshpass -p $password ssh -o StrictHostKeyChecking=no -t "$user@$nodeIp" "reboot"
 			else
 				set -x 
-				sshpass -p $usePassword ssh -o StrictHostKeyChecking=no -t "$user@$which" "shell -ic \"docker-compose restart $component\""
+				sshpass -p $password ssh -o StrictHostKeyChecking=no -t "$user@$nodeIp" "shell -ic \"docker-compose restart $component\""
 			fi
 			;;
 		*)
