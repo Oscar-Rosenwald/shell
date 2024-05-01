@@ -46,7 +46,10 @@ while [[ $# -gt 0 ]]; do
 	shift
 done
 
-[[ -z $vmsName ]] && echo "No VMS name given." && exit 1
+if [[ -z $vmsName ]];; then
+	echo "No VMS name given."
+	exit 1
+fi
 
 targetFile=$MAPS/$vmsName
 
