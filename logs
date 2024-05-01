@@ -81,7 +81,10 @@ fi
 
 echo "Re-grepping ${inArray[@]}"
 for g in "${inArray[@]}"; do
-	in+=" | grep '$g' --colour=always"
+	in+=" | grep '$g'"
+	if [[ $colour = true ]]; then
+		in+=" --color=always"
+	fi
 done
 
 command="cat $file $query $in"
