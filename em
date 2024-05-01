@@ -9,7 +9,7 @@ if [[ "${1:-}" == "-h" ]]; then
 fi
 
 line=""
-file="${1:-/home/lightningman/Private/bugs.org}"
+file="${1:-$VAION_PATH/go/vms/mgmt/common/mgmt/mgmt.go}"
 depth="${2:-5}"
 
 # To find the file if the name is ambiguous.
