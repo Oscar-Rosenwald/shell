@@ -9,7 +9,7 @@ $0 [--raw] [-o <output-file>] [-d <subdirectory>]
 Write all text from chapters in the current diretory (recursively) into a single file, keeping track of sections and subsections.
 
 --raw   Only accumulate the text; no change
--o      Use this name rather than the name of the current directory
+-o      Use this name rather than the name of the current directory. ".org" will be appended to the file.
 -d      Export only files in <directory>, which will be treated as the "home" directory.
 
 Default is without --raw, which prepares the file for export, but is inadvisable for work.
@@ -98,7 +98,10 @@ function importSection() {
 }
 
 # Import raw text to one file
-gls -v1 | grep "^[0-9]\+ - .*" | while read section; do
+# 
+# THIS DID NOT WORK LAST TIME. I GOT THE ORDER 1, 10, 2, 3, 4,...
+# I changed `gls -v1` to `ls -v1`. See if that works.
+ls -v1 | grep "^[0-9]\+ - .*" | while read section; do
 	if [[ -f "$section" ]]; then
 		writeFile "$section" ""
 	else 
