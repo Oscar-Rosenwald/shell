@@ -31,38 +31,14 @@ function __getVmsNames {
 	echo "${array[*]}"
 }
 
-# Prints a digit as a word. If more digits are passed, or if arg 1 isn't a
-# digit, prints arg 1.
-function __printNumberWord {
-	case $1 in
-		0) echo zero	;;
-		1) echo one		;;
-		2) echo two		;;
-		3) echo three	;;
-		4) echo four	;;
-		5) echo five	;;
-		6) echo six		;;
-		7) echo seven	;;
-		8) echo eight	;;
-		9) echo nine	;;
-		*) echo $1		;;
-	esac
-}
-
-function __printWordNumber {
-	case $1 in
-		zero)	echo 0	;;
-		one)	echo 1	;;
-		two)	echo 2	;;
-		three)	echo 3	;;
-		four)	echo 4	;;
-		five)	echo 5	;;
-		six)	echo 6	;;
-		seven)	echo 7	;;
-		eight)	echo 8	;;
-		nine)	echo 9	;;
-		*)		echo $1 ;;
-	esac
+# Args:
+#   - 1 = Name of VMS
+function __getVmsIDs {
+	local array
+	while read id; do
+		array+=($(echo $id | cut -d':' -f 2))
+	done < <(cat $mappingsDir/$1)
+	echo "${array[*]}"
 }
 
 _branch_completions()
@@ -113,6 +89,10 @@ __cc-action_completions()
 	[[ $COMP_CWORD = 1 ]] && COMPREPLY=($(compgen -W "$(_getCcNames)" -- "$lastWord")) && return
 
 	case $prevWord in
+		--detail)
+			# This mode does nothing else, so it allows no other arguments
+			COMPREPLY=()
+			;;
 		-db|-nodb)
 			# Port number
 			COMPREPLY=()
@@ -129,7 +109,7 @@ __cc-action_completions()
 			COMPREPLY=($(compgen -W "platform ${components[*]}" -- "$lastWord"))
 			;;
 		*)
-			COMPREPLY=($(compgen -W "-ha -h -v -l -db -nodb -t --no-map -f -p --patch --reboot -sh platform ${components[*]}" -- "$lastWord"))
+			COMPREPLY=($(compgen -W "--detail -ha -h -v -l -db -nodb -t --no-map -f -p --patch --reboot -sh platform ${components[*]}" -- "$lastWord"))
 			;;
 	esac
 }
@@ -273,7 +253,7 @@ complete -F __clusterLog_completions clusterLog
 
 __dbCluster_completions()
 {
-		lastWord=${COMP_WORDS[$COMP_CWORD]}
+	lastWord=${COMP_WORDS[$COMP_CWORD]}
 	
 	case $COMP_CWORD in
 		1)
@@ -285,3 +265,19 @@ __dbCluster_completions()
 	esac
 }
 complete -F __dbCluster_completions dbCluster
+
+__map-IDs_completions()
+{
+	prevWord=${COMP_WORDS[$((COMP_CWORD-1))]}
+	lastWord=${COMP_WORDS[$COMP_CWORD]}
+	
+	if [[ $prevWord = --reverse ]]; then
+		vmsName=${COMP_WORDS[$((COMP_CWORD-2))]}
+		COMPREPLY=($(compgen -W "$(__getVmsIDs $vmsName)" -- "$lastWord"))
+	elif [[ $COMP_CWORD = 1 ]]; then
+		COMPREPLY=($(compgen -W "$(__getVmsNames)" -- "$lastWord"))
+	else
+		COMPREPLY=($(compgen -W "--reverse" -- "$lastWord"))
+	fi
+}
+complete -F __map-IDs_completions map-IDs.sh
