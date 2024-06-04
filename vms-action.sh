@@ -46,7 +46,7 @@ while [[ $# -gt 0 ]]; do
 		--no-map)
 			mapFile=none
 			;;
-		--path)
+		--patch)
 			whatToDo=patch
 			;;
 		-c)
