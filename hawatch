@@ -136,7 +136,7 @@ fi
 case ${component} in
 	mgmt)
 		grep='-E "(haservice|db_resiliency_service|mgmt_mode_normal.go|recovery|Commit)"'
-		nogrep="'Register connection'"
+		nogrep='-E "(Register connection|norm)"'
 		;;
 	db|postgres)
 		grep='-E "(Commit|db/|LOG|postgres|started streaming WAL)"'
