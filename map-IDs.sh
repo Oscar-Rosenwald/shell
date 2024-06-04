@@ -11,7 +11,7 @@ source ~/shell/cluster
 
 function printHelp {
 	cat <<EOF
-$basename $0 VMS-name [--debug]
+$(basename $1) VMS-name [--debug]
 
 Parse output from stdin and map strings in the VMS file to given replacements.
 EOF
