@@ -46,7 +46,7 @@ while [[ $# -gt 0 ]]; do
 	shift
 done
 
-if [[ -z $vmsName ]];; then
+if [[ -z $vmsName ]]; then
 	echo "No VMS name given."
 	exit 1
 fi
@@ -92,7 +92,7 @@ while read SG; do
 	name=$(deSpace $(echo $SG | cut -d'|' -f 3))
 	id=$(deSpace $(echo $SG | cut -d'|' -f 2))
 
-	if [[ "${SGNames[$name]:+empty}" ]]; then
+	if [[ -z "${SGNames[$name]+empty}" ]]; then
 		SGNames[$name]=true
 		echo "$id:$name" >> $targetFile
 	fi
