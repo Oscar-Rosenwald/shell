@@ -45,7 +45,7 @@ while [[ $# -gt 0 ]]; do
 	elif [[ "$line" != "in" ]]; then
 		query+=" | grep -v \"$line\""
 	else
-		in+=" | grep \"$2\""
+		in+=" | grep -i \"$2\""
 		inArray+=("$2")
 		shift 1
 	fi
@@ -81,7 +81,7 @@ fi
 
 echo "Re-grepping ${inArray[@]}"
 for g in "${inArray[@]}"; do
-	in+=" | grep '$g'"
+	in+=" | grep -i '$g'"
 	if [[ $colour = true ]]; then
 		in+=" --color=always"
 	fi
