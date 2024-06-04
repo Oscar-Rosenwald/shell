@@ -145,7 +145,7 @@ if [[ ! -z "$password" ]]; then
 		log)
 			vmsName=$(get-cc-spec.sh -c $nodeName --get-vms $debug)
 			if [[ ! -z $vmsName ]] && [[ -z $mapFile ]]; then
-				mapFile=$vmsName
+				mapFile=${vmsName/.*/}
 			fi
 
 			f=-f
