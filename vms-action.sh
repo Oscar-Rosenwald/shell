@@ -5,22 +5,26 @@ IFS=$'\n\t'
 
 printHelp() {
 cat <<EOF
-$0 <vms-name> [ <component> [-t num] [-l] | -db | --patch <component> ] [-c <context>] [-n <namespace>] [--no-map]
+$0 <vms-name> [ <component> [-t num] [-l] | -db | --patch <component> | --curl <URL tail> [delete | put/create '<data>'] [-v] [-p]] [-c <context>] [-n <namespace>] [--no-map]
 
 Perform commmon VMS actions.
 
-component           Log from this component and follow the log. Default is mgmt.
--t                  Log this many lines. Default is 500.
--l                  Don't follow the log, but display it in 'less' fashion.
+component            Log from this component and follow the log. Default is mgmt.
+-t                   Log this many lines. Default is 500.
+-l                   Don't follow the log, but display it in 'less' fashion.
 
--db                 Log into the database of the VMS.
+-db                  Log into the database of the VMS.
 
---patch <component> Patch this component. Default is mgmt.
+--patch <component>  Patch this component. Default is mgmt.
 
--c <context>        Use this context. Default is aw1.
--n <namespace>      Use this namespace. Default is prod. Leave out clouddemo-vcloud-.
+--curl <URL tail>... Run a curl command against the VMS. <URL tail> is what follows "/api/v1/". GET is default. PUT and CREATE require data WITHOUT BRACKETS!
+-v                   Run verbose. If not given, we run -i (which prints the response code).
+-p                   Print the curl command. Note that you cannot pipe such an output to jq.
 
---debug             Turn on debugging.
+-c <context>         Use this context. Default is aw1.
+-n <namespace>       Use this namespace. Default is prod. Leave out clouddemo-vcloud-.
+
+--debug              Turn on debugging.
 
 By default, we try to map the output's IDs onto real names. use --no-map to disable this.
 EOF
@@ -35,10 +39,23 @@ tail=100
 debug=false
 mapFile=
 
+allowedCurlMethod=("put" "create" "get" "delete")
+curlData=
+curlMethod=
+curlTail=
+curlPrint='-w "cURL response: %{http_code}\n"'
+curlVerbose=false
+
 while [[ $# -gt 0 ]]; do
 	case $1 in
 		--debug)
 			debug=true
+			;;
+		--curl)
+			whatToDo=curl
+			curlMethod=GET
+			curlTail=$2
+			shift
 			;;
 		-db)
 			whatToDo=db
@@ -60,6 +77,12 @@ while [[ $# -gt 0 ]]; do
 		-l)
 			follow=false
 			;;
+		-v)
+			curlPrint=-v
+			;;
+		-p)
+			curlVerbose=true
+			;;
 		-t)
 			tail=$2
 			shift
@@ -71,6 +94,16 @@ while [[ $# -gt 0 ]]; do
 		*)
 			if [[ -z $vms ]]; then
 				vms=$1
+			elif [[ $whatToDo = curl ]]; then
+				if [[ " ${allowedCurlMethod[@]} " =~ " ${1} " ]]; then
+					curlMethod=${1^^}
+				elif [[ $curlMethod = put || $curlMethod = create ]]; then
+					curlData="{$1}"
+				else
+					echo "I don't understand this CURL command: $1"
+					printHelp
+					exit 1
+				fi
 			else
 				component=$1
 			fi
@@ -92,7 +125,11 @@ if [[ -z $context ]]; then
 	
 	if [[ -f $cachedFile ]] && grep -q "^Context:" $cachedFile; then
 		context=$(grep "^Context:" $cachedFile | cut -d ':' -f 2)
-		echo "Using cached context"
+	else
+		context=$(cloudvmsctl find $vms | jq '.[].Cluster' | sed 's/\"//g')
+		if [[ -f $cachedFile ]]; then
+			echo "Context:$context" >> $cachedFile
+		fi
 	fi
 fi
 
@@ -102,6 +139,10 @@ __getPodName() {
 
 	depInternalName=$(kubectl --context=$context --namespace=$namespace get ingress | grep "$vms\." | cut -d ' ' -f 1)
 	echo $(kubectl --context=$context --namespace=$namespace get pods | grep $depInternalName | grep $g '\-db-' | head -n 1 | cut -d ' ' -f 1)
+}
+
+__getVmsURL() {
+	kubectl get ingress $vms --context=$context --namespace=clouddemo-vcloud-prod | tail -n 1 | cut -d' ' -f 7
 }
 
 case $whatToDo in
@@ -134,6 +175,27 @@ case $whatToDo in
 	patch)
 		set -x
 		$VAION_PATH/go/cloud/scripts/patch-vms $vms $component ${namespace/clouddemo_vcloud_/} --context=$context $@
+		;;
+	curl)
+		url=$(__getVmsURL $vms)
+		cookie=$(get-cookie $url)
+
+		if [[ $curlPrint != -v && $curlMethod = GET ]]; then
+			curlPrint=''
+		fi
+
+		cmd="curl --cookie va=$cookie https://$url/api/v1/$curlTail $curlPrint -X $curlMethod"
+		printCmd="curl --cookie va=... https://$url/api/v1/$curlTail $curlPrint -X $curlMethod"
+		if [[ ! -z $curlData ]]; then
+			cmd+=" -d '$curlData'"
+			printCmd+=" -d '$curlData'"
+		fi
+
+		if [[ $curlVerbose = true ]]; then
+			echocolour "$printCmd"
+		fi
+
+		eval $cmd
 		;;
 	*)
 		echo "Unrecognised operation $whatToDo"
