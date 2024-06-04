@@ -11,9 +11,11 @@ source ~/shell/cluster
 
 function printHelp {
 	cat <<EOF
-$(basename $1) VMS-name [--debug]
+$(basename $1) VMS-name [--debug] [--reverse name]
 
 Parse output from stdin and map strings in the VMS file to given replacements.
+
+If the --reverse option is passed, instead print the UUID associated with the given name for the VMS.
 EOF
 }
 
@@ -21,6 +23,7 @@ mapDir=$MAPS
 defaultNameMapFile=ha
 mapFile=
 debug=false
+reverse=
 
 while [[ $# -gt 0 ]]; do
 	opt=$1
@@ -30,11 +33,25 @@ while [[ $# -gt 0 ]]; do
 		--debug)
 			debug=true
 			;;
+		-h|--help)
+			printHelp $0
+			exit 0
+			;;
+		--reverse)
+			reverse=true
+			item=$1
+			shift
+			;;
 		*)
 			mapFile=$mapDir/$opt
 			;;
 	esac
 done
+
+if [[ $reverse = true ]]; then
+	grep :$item$ $mapFile | cut -d':' -f 1
+	exit 0
+fi
 
 declare -A mappings
 
