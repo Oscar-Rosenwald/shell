@@ -73,6 +73,7 @@ if [[ ! -f "$downloadInfoFile" ]]; then
 fi
 
 vmsName=$(sed -n '2p' "$downloadInfoFile")
+vmsName=${vmsName/\/*/}
 mappingFile=$mappingDir/$vmsName
 
 if [[ ! -f $mappingFile ]]; then
