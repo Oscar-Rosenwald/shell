@@ -5,7 +5,7 @@ IFS=$'\n\t'
 
 printHelp () {
 cat <<EOF
-$0 <node-name> [-db | -nodb | component-to-log [-ha] [-l] [-t num] [user] | -sh component | -v | --patch component | --reboot component ] [--debug]
+$0 <node-name> [-db | -nodb | component-to-log [-ha] [-l] [-t num] [user] | -sh component | -v | --patch component | --reboot component | --detail ] [--debug]
 
 -db   [port]  Log to vaionmgmt (on port if given)
 -nodb [port]  Log to postgres (on port if given)
@@ -20,6 +20,8 @@ component Log this component. No default.
 
 --patch  <component> Patch this component.
 --reboot <component> Reboot the component. "platform" or "" reboots the whole node.
+
+--detail Only logs the cached details of a CC
 
 --debug Turn on debugging.
 
@@ -40,6 +42,9 @@ while [[ "$#" -gt 0 ]]; do
 	case "$1" in
 		--debug)
 			debug=--debug
+			;;
+		--detail)
+			whatToDo=detail
 			;;
 		-ha)
 			haMode=true
@@ -107,6 +112,14 @@ if [[ -z "$user" ]]; then
 	user=admin
 fi
 
+if [[ $whatToDo = detail ]]; then
+	nodeProperName=$(get-cc-spec.sh -c $nodeName --get-proper-name)
+	vms=$(get-cc-spec.sh -c $nodeName --get-vms)
+	echocolour "$nodeName:"
+	echo "VMS: $vms"
+	echo "Proper name: $nodeProperName"
+	exit 0
+fi
 
 nodeIp=$(get-cc-spec.sh -c $nodeName --get-ip $debug)
 password=$(get-cc-spec.sh -c $nodeName --get-password $debug)
