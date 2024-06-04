@@ -409,7 +409,7 @@ findVmsName() {
 }
 
 if [[ $debug = true ]]; then
-	echo "Do: $whatToDo, name: $ccName, proper name: $properName, vms name: $vmsName"
+	echo "Do: $whatToDo, name: $ccName, proper name: $properName, vms name: $vmsName" >&2
 fi
 
 case "$whatToDo" in
