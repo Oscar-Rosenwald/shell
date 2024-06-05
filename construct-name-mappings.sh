@@ -77,11 +77,15 @@ if [[ ! -z $context ]]; then
 	echo "Stored context $context."
 fi
 
+# Remove all trailing whitespace of $1 and replace:
+#  - all ' ' with '_'
+#  - all '/' with '+'
 function deSpace {
 	arg=$1
 	arg="${arg#"${arg%%[![:space:]]*}"}"
 	arg="${arg%"${arg##*[![:space:]]}"}"
 	arg="${arg// /_}"
+	arg="${arg//\//+}"
 	echo $arg
 }
 
@@ -103,3 +107,8 @@ while read CC; do
 	id=$(deSpace $(echo $CC | cut -d'|' -f 5))
 	echo "$id:$name" >> $targetFile
 done < <(sed -n "4,$((lineNumber_Cluster-2))p" $sourceFile)
+
+for dev in $(dirname $sourceFile)/devices/*.json; do
+	# Device UUIDs are left commented out by default on purpose.
+	echo $(deSpace $(cat $dev | jq '.Device | "# \(.guid):\(.name)"') | sed 's/"//g') >> $targetFile
+done

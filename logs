@@ -6,13 +6,14 @@ NC='\033[0m'
 set -euo pipefail
 
 if [[ $1 = -h ]]; then
-	echo -e "${RED}logs <file> [ c | in <regex> ] [--no-tail]${NC}"
+	echo -e "${RED}logs <file> [ c | in <regex> ] [--no-tail] [--debug]${NC}"
 	echo Give list of strings to exclude/include from the file.
 	echo
 	echo "c         -> toggle inclusion of colour. Default is to give coloured output. Using c once will disable it on strings going forward. Using c again will enable it for the following strings, and so on."
 	echo "in        -> include following file. Default is exclude."
 	echo "--no-tail -> Do not limit the output to any line number."
 	echo "--no-map  -> Do not map IDs onto names"
+	echo "--debug   -> Pass --debug to map-IDs.sh"
 	exit 0
 fi
 
@@ -26,6 +27,7 @@ colour=true
 noTail=false
 noMap=false
 file=$1
+debug=
 shift 1 # Exclusions from now on
 
 while [[ $# -gt 0 ]]; do
@@ -42,6 +44,8 @@ while [[ $# -gt 0 ]]; do
 		noMap=true
 	elif [[ $line = --no-tail ]]; then
 		noTail=true
+	elif [[ $line = --debug ]]; then
+		debug=--debug
 	elif [[ "$line" != "in" ]]; then
 		query+=" | grep -v \"$line\""
 	else
@@ -95,7 +99,7 @@ if [[ $noTail = false ]]; then
 fi
 
 if [[ $noMap = false ]]; then
-	command+=" | map-IDs.sh $vmsName"
+	command+=" | map-IDs.sh $vmsName $debug"
 fi
 
 newCmd="${command//$CYAN//}"

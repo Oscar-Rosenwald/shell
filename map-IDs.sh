@@ -65,6 +65,10 @@ if [[ -f $mapFile ]]; then
 			continue
 		fi
 
+		if [[ $line =~ ^#.* ]]; then
+			continue
+		fi
+
 		mappings[$id]=$name
 	done < <(cat $mapFile)
 fi
@@ -82,6 +86,10 @@ function applyMap {
 		
 		cmd+=" | sed -u ''/$id/s//"'`'"printf \"${CYAN}$name${NC}\""'`'"/g''"
 	done
+
+	if [[ $debug = true ]]; then
+		echocolour "$cmd"
+	fi
 	eval $cmd
 }
 
