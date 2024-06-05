@@ -5,7 +5,7 @@ IFS=$'\n\t'
 
 printHelp() {
 cat <<EOF
-$0 <vms-name> [ <component> [-t num] [-l] | -db | --patch <component> | --curl <URL tail> [delete | put/create '<data>'] [-v] [-p]] [-c <context>] [-n <namespace>] [--no-map]
+$0 <vms-name> [ <component> [-t num] [-l] | -db | --patch <component> | --curl <URL tail> [delete | put/create '<data>'] [-v] [-p] | --version ] [-c <context>] [-n <namespace>] [--no-map]
 
 Perform commmon VMS actions.
 
@@ -23,6 +23,8 @@ component            Log from this component and follow the log. Default is mgmt
 
 -c <context>         Use this context. Default is aw1.
 -n <namespace>       Use this namespace. Default is prod. Leave out clouddemo-vcloud-.
+
+--version            Returns the VMS version.
 
 --debug              Turn on debugging.
 
@@ -59,6 +61,9 @@ while [[ $# -gt 0 ]]; do
 			;;
 		-db)
 			whatToDo=db
+			;;
+		--version)
+			whatToDo=version
 			;;
 		--no-map)
 			mapFile=none
@@ -142,7 +147,7 @@ __getPodName() {
 }
 
 __getVmsURL() {
-	kubectl get ingress $vms --context=$context --namespace=clouddemo-vcloud-prod | tail -n 1 | cut -d' ' -f 7
+	kubectl get ingress $vms --context=$context --namespace=$namespace | tail -n 1 | cut -d' ' -f 7
 }
 
 case $whatToDo in
@@ -196,6 +201,12 @@ case $whatToDo in
 		fi
 
 		eval $cmd
+		;;
+	version)
+		pod=$(__getPodName)
+		userData=$(kubectl get pod $pod -n $namespace --context=$context -o json | jq '.spec.containers[] | select(.name == "mgmt") | .env | to_entries[] | select(.value != null and .value.name == "VAION_USER_DATA") | .value.value')
+		# kubectl returns a weirdly quoted json string, so we can't just use jq on the output. We must grep for the version pattern.
+		echo $userData | sed -e 's/.*\\"version\\":\\"\(._._[^"]*\)\\".*/\1/'
 		;;
 	*)
 		echo "Unrecognised operation $whatToDo"

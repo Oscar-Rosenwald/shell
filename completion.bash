@@ -168,7 +168,7 @@ __vms-action_completions()
 	else
 		# This comment is here because tree sitter has a problem for some reason
 		# if it isn't.
-		common=("-t" "-l" "-n" "-c" "-h" "--help" "--patch" "-db" "--debug" "--no-map" "--curl")
+		common=("-t" "-l" "-n" "-c" "-h" "--help" "--patch" "-db" "--debug" "--no-map" "--curl" "--version")
 		if [[ $COMP_CWORD = 2 ]]; then
 			common+=("${components[*]}")
 		fi
