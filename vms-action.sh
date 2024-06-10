@@ -96,7 +96,7 @@ while [[ $# -gt 0 ]]; do
 			elif [[ $whatToDo = curl ]]; then
 				if [[ " ${allowedCurlMethod[@]} " =~ " ${1} " ]]; then
 					curlMethod=${1^^}
-				elif [[ $curlMethod = put || $curlMethod = create ]]; then
+				elif [[ $curlMethod = PUT || $curlMethod = CREATE ]]; then
 					curlData="{$1}"
 				else
 					echo "I don't understand this CURL command: $1"

@@ -4,7 +4,7 @@ set -euo pipefail
 IFS=$'\n\t'
 
 if [[ -z ${1+x} ]]; then
-	echo Supply a VMS name
+	echo Supply a VMS name >&2
 	exit 1
 fi
 

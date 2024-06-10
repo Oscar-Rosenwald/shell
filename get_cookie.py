@@ -57,6 +57,6 @@ for name, enc_val in rows:
     cookies[name] = val
 
 if "va" not in cookies:
-    print("No cookie found. Are you logged in to the VMS UI?")
+    print("No cookie found. Are you logged in to the VMS UI?", file=sys.stderr)
 else:
     print(cookies["va"])
