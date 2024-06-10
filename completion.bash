@@ -158,17 +158,15 @@ __vms-action_completions()
 	elif [[ $prevOption = --patch ]]; then
 		COMPREPLY=($(compgen -W "${components[*]}" -- "$lastWord"))
 	elif [[ $prevOption = -t ]] || [[ $prevOption = -c ]] || [[ $prevOption = -n ]] || [[ $prevOption = --curl ]]; then
-		echo "nothing"
 		:
 	elif [[ $prevOption = PUT || $prevOption = CREATE ]]; then
-		echo "curl data"
 		:
 	elif [[ ${COMP_WORDS[2]} = --curl ]]; then
 		COMPREPLY=($(compgen -W "delete put create get -v -p" -- "$lastWord"))
 	else
 		# This comment is here because tree sitter has a problem for some reason
 		# if it isn't.
-		common=("-t" "-l" "-n" "-c" "-h" "--help" "--patch" "-db" "--debug" "--no-map" "--curl" "--version")
+		common=("-t" "-l" "-n" "-c" "-h" "--help" "--patch" "-db" "--debug" "--no-map" "--curl" "--version" "-co")
 		if [[ $COMP_CWORD = 2 ]]; then
 			common+=("${components[*]}")
 		fi

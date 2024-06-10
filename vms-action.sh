@@ -5,7 +5,7 @@ IFS=$'\n\t'
 
 printHelp() {
 cat <<EOF
-$0 <vms-name> [ <component> [-t num] [-l] | -db | --patch <component> | --curl <URL tail> [delete | put/create '<data>'] [-v] [-p] | --version ] [-c <context>] [-n <namespace>] [--no-map]
+$0 <vms-name> [ <component> [-t num] [-l] | -db | --patch <component> | --curl <URL tail> [delete | put/create '<data>'] [-v] [-p] | --version | -co ] [--no-map]
 
 Perform commmon VMS actions.
 
@@ -21,10 +21,8 @@ component            Log from this component and follow the log. Default is mgmt
 -v                   Run verbose. If not given, we run -i (which prints the response code).
 -p                   Print the curl command. Note that you cannot pipe such an output to jq.
 
--c <context>         Use this context. Default is aw1.
--n <namespace>       Use this namespace. Default is prod. Leave out clouddemo-vcloud-.
-
 --version            Returns the VMS version.
+-co                  Chceckout to the current version of the VMS. Must be in VAION_PATH.
 
 --debug              Turn on debugging.
 
@@ -32,8 +30,9 @@ By default, we try to map the output's IDs onto real names. use --no-map to disa
 EOF
 }
 
-namespace=clouddemo-vcloud-prod
 context=
+pod=
+namespace=
 whatToDo=log
 vms=
 follow=true
@@ -62,6 +61,9 @@ while [[ $# -gt 0 ]]; do
 		-db)
 			whatToDo=db
 			;;
+		-co)
+			whatToDo=checkout
+			;;
 		--version)
 			whatToDo=version
 			;;
@@ -70,14 +72,6 @@ while [[ $# -gt 0 ]]; do
 			;;
 		--patch)
 			whatToDo=patch
-			;;
-		-c)
-			context=$2
-			shift
-			;;
-		-n)
-			namespace=clouddemo-vcloud-$2
-			shift
 			;;
 		-l)
 			follow=false
@@ -123,41 +117,136 @@ fi
 
 ([[ $whatToDo = log ]] | [[ $whatToDo = patch ]]) && [[ -z ${component+x} ]] && component=mgmt
 
-# Get the cached context if we have one.
-if [[ -z $context ]]; then
-	cachedFile=$MAPS/$vms
-	context=aw1 # Default
-	
-	if [[ -f $cachedFile ]] && grep -q "^Context:" $cachedFile; then
-		context=$(grep "^Context:" $cachedFile | cut -d ':' -f 2)
-	else
-		context=$(cloudvmsctl find $vms | jq '.[].Cluster' | sed 's/\"//g')
-		if [[ -f $cachedFile ]]; then
-			echo "Context:$context" >> $cachedFile
-		fi
+cachedFile=$MAPS/$vms
+
+__composeCluster() {
+	name=$1
+	project=$2
+	region=$3
+	echo "gke_${project}_${region}_${name}"
+}
+
+# Keep aw1 first in the array so it's the first one we try. Most VMSs we'll
+# interact with will be in that context.
+clusters=(
+		  $(__composeCluster "amazing-witch-1" "amazing-witch" "europe-west1")
+		  $(__composeCluster "lively-falcon-1" "lively-falcon" "us-central1")
+		  $(__composeCluster "lively-falcon-2" "lively-falcon" "europe-west1")
+		  $(__composeCluster "lively-falcon-3" "lively-falcon" "australia-southeast1")
+		  $(__composeCluster "lively-falcon-4" "lively-falcon" "us-west1")
+		  $(__composeCluster "lively-falcon-5" "lively-falcon" "northamerica-northeast1")
+		  $(__composeCluster "lively-falcon-6" "lively-falcon" "europe-west2")
+		  $(__composeCluster "lively-falcon-7" "lively-falcon" "us-central1")
+		  $(__composeCluster "lively-falcon-8" "lively-falcon" "europe-west1")
+		  $(__composeCluster "lively-falcon-9" "lively-falcon" "europe-west3")
+		  $(__composeCluster "lively-falcon-10" "lively-falcon" "northamerica-northeast1")
+		  $(__composeCluster "lively-falcon-11" "lively-falcon" "us-west1")
+		  $(__composeCluster "lively-falcon-12" "lively-falcon" "us-central1")
+		  $(__composeCluster "lively-falcon-13" "lively-falcon" "northamerica-northeast1")
+		 )
+
+__getVmsConfig() {
+	if [[ ! -f $cachedFile ]]; then
+		return
 	fi
-fi
 
-__getPodName() {
-	g="-v"
-	[[ ${1:-} = db ]] && g=''
+	key=$1
+	value=
+	if grep -q "^$key:" $cachedFile; then
+		value=$(grep "^$key:" $cachedFile | cut -d ':' -f 2)
+	fi
+	echo $value
+}
 
-	depInternalName=$(kubectl --context=$context --namespace=$namespace get ingress | grep "$vms\." | cut -d ' ' -f 1)
-	echo $(kubectl --context=$context --namespace=$namespace get pods | grep $depInternalName | grep $g '\-db-' | head -n 1 | cut -d ' ' -f 1)
+__storeVmsConfig() {
+	key=$1
+	value=$2
+
+	if [[ -f $cachedFile ]] && grep -q "^$key:" $cachedFile; then
+		sed -i "s/$key:.*/$key:$value/" $cachedFile
+	else
+		echo "$key:$value" >> $cachedFile
+	fi
+}
+
+# Upon exit, $context, $pod, and $namespace are filled in and cached, provided
+# that they weren't cached already, or if they were that they weren't overridden
+# by command-line arguments.
+#
+# Args:
+#   - 1: If 'db', gets the db pod.
+__fillVmsKubeConfig() {
+	context=$(__getVmsConfig "Context")
+	pod=$(__getVmsConfig "Pod")
+	namespace=$(__getVmsConfig "Namespace")
+	arg=${1:-}
+
+	if [[ -z $context || -z $namespace ]]; then
+		for cluster in ${clusters[*]}; do
+			column=$(kubectl get ingress --context=$cluster --all-namespaces -o wide | grep $vms || echo '' )
+			if [[ ! -z $column ]]; then
+				namespace=$(echo $column | cut -d ' ' -f 1)
+				context=$cluster
+				break
+			fi
+		done
+	fi
+
+	if [[ -z $context || -z $namespace ]]; then
+		echo "Failed to find VMS $vms in any context" >&2
+		exit 1
+	fi
+
+	if [[ -z $pod ]] || [[ ! -z $arg ]]; then
+		g="-v"
+		[[ $arg = db ]] && g=''
+
+		depInternalName=$(kubectl --context=$context --namespace=$namespace get ingress | grep "$vms\." | cut -d ' ' -f 1)
+		pod=$(kubectl --context=$context --namespace=$namespace get pods | grep $depInternalName | grep $g '\-db-' | head -n 1 | cut -d ' ' -f 1)
+	fi
+
+	if [[ -z $pod ]]; then
+		echo "Failed to find pod for VMs $vms in context $context and namespace $namespace" >&2
+		exit 0
+	fi
+
+	__storeVmsConfig "Context" $context
+	__storeVmsConfig "Namespace" $namespace
+	if [[ -z $arg ]]; then 
+		__storeVmsConfig "Pod" $pod
+	fi
+}
+
+__getVersion() {
+	__fillVmsKubeConfig
+	userData=$(kubectl get pod $pod -n $namespace --context=$context -o json | jq '.spec.containers[] | select(.name == "mgmt") | .env | to_entries[] | select(.value != null and .value.name == "VAION_USER_DATA") | .value.value')
+	if [[ $? -ne 0 ]]; then
+		logFile=/tmp/vms_action_failure_$vms
+		kubectl get pod $pod -n $namespace --context=$context -o json > $logFile
+		echo "Unknown version - check $logFile"
+		exit 0
+	fi
+	# kubectl returns a weirdly quoted json string, so we can't just use jq on the output. We must grep for the version pattern.
+	echo $userData | sed -e 's/.*\\"version\\":\\"\(._._[^"]*\)\\".*/\1/'
 }
 
 __getVmsURL() {
-	kubectl get ingress $vms --context=$context --namespace=$namespace | tail -n 1 | cut -d' ' -f 7
+	kubectl get ingress ${pod/-0/} --context=$context --namespace=$namespace -o wide | tail -n 1 | cut -d' ' -f 7
 }
 
 case $whatToDo in
 	db)
-		pod=$(__getPodName db)
+		__fillVmsKubeConfig db
 		set -x
 		kubectl -n $namespace exec -it $pod --context=$context --container db -- psql -U postgres -d vaionmgmt
 		;;
+
 	log)
-		pod=$(__getPodName)
+		arg=
+		if [[ $component = db ]]; then
+			arg=db
+		fi
+		__fillVmsKubeConfig $arg
 		f=
 		if [[ $follow = true ]]; then
 			f="-f"
@@ -177,11 +266,14 @@ case $whatToDo in
 		echocolour $cmd
 		eval $cmd
 		;;
+
 	patch)
 		set -x
 		$VAION_PATH/go/cloud/scripts/patch-vms $vms $component ${namespace/clouddemo_vcloud_/} --context=$context $@
 		;;
+
 	curl)
+		__fillVmsKubeConfig
 		url=$(__getVmsURL $vms)
 		cookie=$(get-cookie $url)
 
@@ -203,15 +295,20 @@ case $whatToDo in
 		eval $cmd
 		;;
 	version)
-		pod=$(__getPodName)
-		userData=$(kubectl get pod $pod -n $namespace --context=$context -o json | jq '.spec.containers[] | select(.name == "mgmt") | .env | to_entries[] | select(.value != null and .value.name == "VAION_USER_DATA") | .value.value')
-		# kubectl returns a weirdly quoted json string, so we can't just use jq on the output. We must grep for the version pattern.
-		echo $userData | sed -e 's/.*\\"version\\":\\"\(._._[^"]*\)\\".*/\1/'
+		__getVersion
 		;;
+
+	checkout)
+		if ! diff --brief . $VAION_PATH; then
+			echo "You must be in $VAION_PATH for this" >&2
+			exit 0
+		fi
+		git checkout $(__getVersion)
+		;;
+
 	*)
 		echo "Unrecognised operation $whatToDo"
 		printHelp
 		exit 1
 		;;
 esac
-		
