@@ -41,6 +41,17 @@ function __getVmsIDs {
 	echo "${array[*]}"
 }
 
+# Gets the cached IDs of things for a given VMS.
+# Args:
+#   - 1 = VMS name
+function __getVmsItemNames {
+	local array
+	while read name; do
+		array+=($(echo $name | cut -d':' -f 1))
+	done < <(cat $mappingsDir/$1)
+	echo "${array[*]}"
+}
+
 _branch_completions()
 {
 	index=${#COMP_WORDS[@]}
@@ -278,10 +289,13 @@ __map-IDs_completions()
 	if [[ $prevWord = --reverse ]]; then
 		vmsName=${COMP_WORDS[$((COMP_CWORD-2))]}
 		COMPREPLY=($(compgen -W "$(__getVmsIDs $vmsName)" -- "$lastWord"))
+	elif [[ $prevWord == --lookup ]]; then
+		vmsName=${COMP_WORDS[$((COMP_CWORD-2))]}
+		COMPREPLY=($(compgen -W "$(__getVmsItemNames $vmsName)" -- "$lastWord"))
 	elif [[ $COMP_CWORD = 1 ]]; then
 		COMPREPLY=($(compgen -W "$(__getVmsNames)" -- "$lastWord"))
 	else
-		COMPREPLY=($(compgen -W "--reverse" -- "$lastWord"))
+		COMPREPLY=($(compgen -W "--reverse --lookup" -- "$lastWord"))
 	fi
 }
 complete -F __map-IDs_completions map-IDs.sh

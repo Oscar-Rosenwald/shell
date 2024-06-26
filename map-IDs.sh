@@ -11,7 +11,7 @@ source ~/shell/cluster
 
 function printHelp {
 	cat <<EOF
-$(basename $1) VMS-name [--debug] [--reverse name]
+$(basename $1) VMS-name [--debug] [--reverse name | --lookup id]
 
 Parse output from stdin and map strings in the VMS file to given replacements.
 
@@ -24,6 +24,7 @@ defaultNameMapFile=ha
 mapFile=
 debug=false
 reverse=
+idOpt=
 
 while [[ $# -gt 0 ]]; do
 	opt=$1
@@ -42,14 +43,24 @@ while [[ $# -gt 0 ]]; do
 			item=$1
 			shift
 			;;
+		--lookup)
+			idOpt=$1
+			shift
+			;;
 		*)
 			mapFile=$mapDir/$opt
 			;;
 	esac
 done
 
+if [[ ! -z ${MAP_DEBUG:-} ]]; then
+	debug=true
+fi
 if [[ $reverse = true ]]; then
 	grep :$item$ $mapFile | cut -d':' -f 1
+	exit 0	
+elif [[ ! -z $idOpt ]]; then
+	grep $idOpt.*: $mapFile | cut -d':' -f 2
 	exit 0
 fi
 
