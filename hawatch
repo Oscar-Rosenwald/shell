@@ -150,11 +150,11 @@ function __genericCCLog {
 	cmd="$@"
 	
 	if [[ ! -z $nogrep ]]; then
-		cmd+=" | grep --line-buffered -iv $nogrep"
+		cmd+=" | grep --line-buffered -iav $nogrep"
 	fi
 
 	if [[ ! -z $grep ]]; then
-		cmd+=" | grep --color=always --line-buffered $grep"
+		cmd+=" | grep --color=always -a --line-buffered $grep"
 	fi
 
 	if [[ ! -z $mapFile ]]; then
