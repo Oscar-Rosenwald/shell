@@ -132,73 +132,68 @@ if [[ $whatToDo = log ]] && [[ $haMode = true ]]; then
 	exit 0
 fi
 
-if [[ ! -z "$password" ]]; then
-	case $whatToDo in
-		db)
+case $whatToDo in
+	db)
+		set -x
+		sshpass -p $password ssh -o StrictHostKeyChecking=no -t "$user@$nodeIp" "shell -ic \"docker-compose exec -it db psql -U postgres -d vaionmgmt -p $port\""
+		;;
+	nodb)
+		set -x
+		sshpass -p $password ssh -o StrictHostKeyChecking=no -t "$user@$nodeIp" "shell -ic \"docker-compose exec db psql -U postgres -p $port\""
+		;;
+	log)
+		vmsName=$(get-cc-spec.sh -c $nodeName --get-vms $debug)
+		if [[ ! -z $vmsName ]] && [[ -z $mapFile ]]; then
+			mapFile=${vmsName/.*/}
+		fi
+
+		f=-f
+		[[ $less = true ]] && f=
+
+		shellCmd="logs -t ${lines:-100} $f $component"
+
+		if [[ $component = platform ]]; then
+			shellCmd="shell -c \"tail -n ${lines:-100} $f /var/log/supervisor/platform.log\""
+		fi
+		
+		cmd="sshpass -p $password ssh -o StrictHostKeyChecking=no \"$user@$nodeIp\" '$shellCmd'"
+
+		if [[ ! -z $mapFile ]] && [[ $mapFile != none ]]; then
+			cmd+=" | map-IDs.sh $mapFile"
+		fi
+		if [[ $less = true ]]; then
+			cmd+=" | less -r -S"
+		fi
+
+		echocolour $cmd >&2
+		eval $cmd
+		;;
+	sh)
+		do=bash
+		[[ $component = mgmt || $component = ha ]] && do=sh
+
+		set -x
+		sshpass -p $password ssh -o StrictHostKeyChecking=no -t "$user@$nodeIp" "shell -ic \"docker-compose exec -it $component $do\""
+		;;
+	patch)
+		echo "cc-patch.sh $nodeIp $component -p $password"
+		cc-patch.sh $nodeIp $component -p $password
+		;;
+	vplat)
+		awssh $nodeIp -p $password
+		;;
+	reboot)
+		if [[ $component = platform ]]; then
 			set -x
-			sshpass -p $password ssh -o StrictHostKeyChecking=no -t "$user@$nodeIp" "shell -ic \"docker-compose exec -it db psql -U postgres -d vaionmgmt -p $port\""
-			;;
-		nodb)
-			set -x
-			sshpass -p $password ssh -o StrictHostKeyChecking=no -t "$user@$nodeIp" "shell -ic \"docker-compose exec db psql -U postgres -p $port\""
-			;;
-		log)
-			vmsName=$(get-cc-spec.sh -c $nodeName --get-vms $debug)
-			if [[ ! -z $vmsName ]] && [[ -z $mapFile ]]; then
-				mapFile=${vmsName/.*/}
-			fi
-
-			f=-f
-			[[ $less = true ]] && f=
-
-			shellCmd="logs -t ${lines:-100} $f $component"
-
-			if [[ $component = platform ]]; then
-				shellCmd="shell -c \"tail -n ${lines:-100} $f /var/log/supervisor/platform.log\""
-			fi
-			
-			cmd="sshpass -p $password ssh -o StrictHostKeyChecking=no \"$user@$nodeIp\" '$shellCmd'"
-
-			if [[ ! -z $mapFile ]] && [[ $mapFile != none ]]; then
-				cmd+=" | map-IDs.sh $mapFile"
-			fi
-			if [[ $less = true ]]; then
-				cmd+=" | less -r -S"
-			fi
-
-			echocolour $cmd >&2
-			eval $cmd
-			;;
-		sh)
-			do=bash
-			[[ $component = mgmt || $component = ha ]] && do=sh
-
-			set -x
-			sshpass -p $password ssh -o StrictHostKeyChecking=no -t "$user@$nodeIp" "shell -ic \"docker-compose exec -it $component $do\""
-			;;
-		patch)
-			echo "cc-patch.sh $nodeIp $component -p $password"
-			cc-patch.sh $nodeIp $component -p $password
-			;;
-		vplat)
-			awssh $nodeIp -p $password
-			;;
-		reboot)
-			if [[ $component = platform ]]; then
-				set -x
-				sshpass -p $password ssh -o StrictHostKeyChecking=no -t "$user@$nodeIp" "reboot"
-			else
-				set -x 
-				sshpass -p $password ssh -o StrictHostKeyChecking=no -t "$user@$nodeIp" "shell -ic \"docker-compose restart $component\""
-			fi
-			;;
-		*)
-			echo "Error: unknown action $whatToDo"
-			printHelp
-			exit 1
-			;;
-	esac
-else
-	echo "Action $whatToDo cannot be performed without a password"
-
-fi
+			sshpass -p $password ssh -o StrictHostKeyChecking=no -t "$user@$nodeIp" "reboot"
+		else
+			set -x 
+			sshpass -p $password ssh -o StrictHostKeyChecking=no -t "$user@$nodeIp" "shell -ic \"docker-compose restart $component\""
+		fi
+		;;
+	*)
+		echo "Error: unknown action $whatToDo"
+		printHelp
+		exit 1
+		;;
+esac
