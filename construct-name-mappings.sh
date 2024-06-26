@@ -98,17 +98,18 @@ while read SG; do
 
 	if [[ -z "${SGNames[$name]+empty}" ]]; then
 		SGNames[$name]=true
-		echo "$id:$name" >> $targetFile
+		echo "$id:SG_$name" >> $targetFile
 	fi
 done < <(sed -n "4,$((lineNumber_Cluster-2))p" $sourceFile)
 
 while read CC; do
 	name=$(deSpace $(echo $CC | cut -d'|' -f 6))
 	id=$(deSpace $(echo $CC | cut -d'|' -f 5))
-	echo "$id:$name" >> $targetFile
+	echo "$id:CC_$name" >> $targetFile
 done < <(sed -n "4,$((lineNumber_Cluster-2))p" $sourceFile)
 
 for dev in $(dirname $sourceFile)/devices/*.json; do
-	# Device UUIDs are left commented out by default on purpose.
-	echo $(deSpace $(cat $dev | jq '.Device | "# \(.guid):\(.name)"') | sed 's/"//g') >> $targetFile
+	# Device UUIDs are left commented out by default on purpose, because too
+	# many IDs slow down the map-IDs.sh script.
+	echo $(deSpace $(cat $dev | jq '.Device | "# \(.guid):DEV_\(.name)"') | sed 's/"//g') >> $targetFile
 done

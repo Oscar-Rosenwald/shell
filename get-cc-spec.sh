@@ -293,6 +293,12 @@ function __fillAll {
 function __getIp {
 	vms=$1
 	name=$2
+
+	if [[ "$vms" = "<>" ]]; then
+		# <> is a special symbol which means "This CC's IP is equal to its cached name."
+		echo $name
+		return
+	fi
 	
 	cookie=$(get-cookie $vms)
 	curl --cookie va=$cookie -s https://$vms/api/v1/nodes 2>/tmp/.curl1.log |
@@ -307,6 +313,12 @@ function __getIp {
 function __getPassword {
 	vms=$1
 	name=$2
+
+	if [[ "$vms" = "<>" ]]; then
+		# <> is a special symbol which means "This CC is unclaimed."
+		echo ""
+		return
+	fi
 
 	cookie=$(get-cookie $vms)
 	nodeId=$(curl --cookie va=$cookie -s https://$vms/api/v1/nodes 2>/tmp/.curl1.log |
