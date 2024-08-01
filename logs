@@ -69,11 +69,21 @@ fi
 downloadInfoFile="$logdir"/download_info
 
 if [[ ! -f "$downloadInfoFile" ]]; then
-	echo "What is this VMS called? (You forgot to include a download_info file). This will NOT create a permanent file."
-	read vmsName -p "VMS name: "
-	downloadInfoFile=/tmp/$vmsName
-	echo "VMS name:" > $downloadInfoFile
-	echo $vmsName >> $downloadInfoFile
+	tmpFile="$(dirname '$(realpath $file)')"/.vmsname
+	if [[ -f $tmpFile ]]; then
+		vmsName=$(cat $tmpFile)
+	fi
+
+	if [[ -z ${vmsName:-x} ]] || [[ ! -f /tmp/${vmsName:-blablabla} ]]; then
+		echo "What is this VMS called? (You forgot to include a download_info file). This WILL create a permanent file."
+		read -p "VMS name: " vmsName
+		downloadInfoFile=/tmp/$vmsName
+		echo "VMS name:" > $downloadInfoFile
+		echo $vmsName >> $downloadInfoFile
+		echo $vmsName > $tmpFile
+	else
+		downloadInfoFile=/tmp/$vmsName
+	fi
 fi
 
 vmsName=$(sed -n '2p' "$downloadInfoFile")
