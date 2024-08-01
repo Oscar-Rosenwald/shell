@@ -6,12 +6,18 @@ if [[ "$1" == "-h" ]]; then
 fi
 
 OLD_BRANCH=$(git rev-parse --abbrev-ref HEAD)
-NEW_BRANCH=$(echo $OLD_BRANCH | sed 's/^cs_//; s/-/_/g')
+NEW_BRANCH=$(echo cs_$OLD_BRANCH | sed 's/^cs_//; s/-/_/g')
 FORCE_OPTION="${1:---force-with-lease}"
 
 if [[ "$FORCE_OPTION" == "simple" ]]; then
 	FORCE_OPTION=""
 fi
 
-set -x 
-git push $FORCE_OPTION origin "$OLD_BRANCH:cs_$NEW_BRANCH"
+if [[ $OLD_BRANCH =~ rt_.* ]]; then
+	NEW_BRANCH=$OLD_BRANCH
+fi
+
+cmd="git push $FORCE_OPTION origin \"$OLD_BRANCH:$NEW_BRANCH\""
+echocolour $cmd
+eval $cmd
+
