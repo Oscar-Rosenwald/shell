@@ -170,10 +170,10 @@ __vms-action_completions()
 		COMPREPLY=($(compgen -W "${components[*]}" -- "$lastWord"))
 	elif [[ $prevOption = -t ]] || [[ $prevOption = -c ]] || [[ $prevOption = -n ]] || [[ $prevOption = --curl ]]; then
 		:
-	elif [[ $prevOption = PUT || $prevOption = CREATE ]]; then
+	elif [[ $prevOption = PUT || $prevOption = POST ]]; then
 		:
 	elif [[ ${COMP_WORDS[2]} = --curl ]]; then
-		COMPREPLY=($(compgen -W "delete put create get -v -p" -- "$lastWord"))
+		COMPREPLY=($(compgen -W "delete put post get -v -p" -- "$lastWord"))
 	else
 		# This comment is here because tree sitter has a problem for some reason
 		# if it isn't.

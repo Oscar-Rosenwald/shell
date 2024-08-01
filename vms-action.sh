@@ -5,7 +5,7 @@ IFS=$'\n\t'
 
 printHelp() {
 cat <<EOF
-$0 <vms-name> [ <component> [-t num] [-l] | -db | --patch <component> | --curl <URL tail> [delete | put/create '<data>'] [-v] [-p] | --version | -co ] [--no-map]
+$0 <vms-name> [ <component> [-t num] [-l] | -db | --patch <component> | --curl <URL tail> [delete | put/post '<data>'] [-v] [-p] | --version | -co ] [--no-map]
 
 Perform commmon VMS actions.
 
@@ -17,7 +17,7 @@ component            Log from this component and follow the log. Default is mgmt
 
 --patch <component>  Patch this component. Default is mgmt.
 
---curl <URL tail>... Run a curl command against the VMS. <URL tail> is what follows "/api/v1/". GET is default. PUT and CREATE require data WITHOUT BRACKETS!
+--curl <URL tail>... Run a curl command against the VMS. <URL tail> is what follows "/api/v1/". GET is default. PUT and POST require data WITHOUT BRACKETS!
 -v                   Run verbose. If not given, we run -i (which prints the response code).
 -p                   Print the curl command. Note that you cannot pipe such an output to jq.
 
@@ -40,7 +40,7 @@ tail=100
 debug=false
 mapFile=
 
-allowedCurlMethod=("put" "create" "get" "delete")
+allowedCurlMethod=("put" "post" "get" "delete")
 curlData=
 curlMethod=
 curlTail=
@@ -96,7 +96,7 @@ while [[ $# -gt 0 ]]; do
 			elif [[ $whatToDo = curl ]]; then
 				if [[ " ${allowedCurlMethod[@]} " =~ " ${1} " ]]; then
 					curlMethod=${1^^}
-				elif [[ $curlMethod = PUT || $curlMethod = CREATE ]]; then
+				elif [[ $curlMethod = PUT || $curlMethod = POST ]]; then
 					curlData="{$1}"
 				else
 					echo "I don't understand this CURL command: $1"
