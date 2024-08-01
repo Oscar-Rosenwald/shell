@@ -111,5 +111,5 @@ done < <(sed -n "4,$((lineNumber_Cluster-2))p" $sourceFile)
 for dev in $(dirname $sourceFile)/devices/*.json; do
 	# Device UUIDs are left commented out by default on purpose, because too
 	# many IDs slow down the map-IDs.sh script.
-	echo $(deSpace $(cat $dev | jq '.Device | "# \(.guid):DEV_\(.name)"') | sed 's/"//g') >> $targetFile
+	echo "DEV_"$(deSpace $(cat $dev | jq '.Device | "# \(.guid):\(.name)"') | sed 's/"//g') >> $targetFile
 done
