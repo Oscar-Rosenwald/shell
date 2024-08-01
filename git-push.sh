@@ -6,7 +6,7 @@ if [[ "$1" == "-h" ]]; then
 fi
 
 OLD_BRANCH=$(git rev-parse --abbrev-ref HEAD)
-NEW_BRANCH=$(echo cs_$OLD_BRANCH | sed 's/^cs_//; s/-/_/g')
+NEW_BRANCH=cs_$(echo $OLD_BRANCH | sed 's/^cs_//; s/-/_/g')
 FORCE_OPTION="${1:---force-with-lease}"
 
 if [[ "$FORCE_OPTION" == "simple" ]]; then
@@ -14,10 +14,19 @@ if [[ "$FORCE_OPTION" == "simple" ]]; then
 fi
 
 if [[ $OLD_BRANCH =~ rt_.* ]]; then
-	NEW_BRANCH=$OLD_BRANCH
+	NEW_BRANCH=release_topic_${OLD_BRANCH/rt_/}
 fi
 
 cmd="git push $FORCE_OPTION origin \"$OLD_BRANCH:$NEW_BRANCH\""
 echocolour $cmd
 eval $cmd
 
+if [[ $? -eq 0 ]]; then
+	branches=~/Private/branches.csv
+	if grep -q "$OLD_BRANCH.*active" $branches; then
+		b -s pipeline
+	elif grep -q "$OLD_BRANCH.*free" $branches; then
+		read -p "What is the topic of this branch? " topic
+		b -s pipeline -t "$topic"
+	fi
+fi
