@@ -47,7 +47,7 @@ print("[-] Slack dir found at '{}'".format(dir_slack))
 # hummus_sound_cache_filename = command_grep_output.split("Cache_Data/")[1].split(" matches")[0]
 # hummus_sound_cache_filepath = dir_slack + "/" + hummus_sound_cache_filename
 # print("[-] Found hummus sound cache file '{}'".format(hummus_sound_cache_filename))
-hummus_sound_cache_filepath = '/home/lightningman/.config/Slack/Cache/Cache_Data/5487d157ce0722de_s'
+hummus_sound_cache_filepath = os.path.expanduser('~') + '/.config/Slack/Cache/Cache_Data/5487d157ce0722de_s'
 
 
 # req_resource = "1/0/" + "https://a.slack-edge.com/bv1-9/hummus-200e354.mp3" # previous was bv1-9

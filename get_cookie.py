@@ -42,7 +42,7 @@ def decrypt(encrypted_value):
         return decrypt_with_key(encrypted_value, key, salt, iv, length, iterations)
 
 
-database = "/home/lightningman/.config/google-chrome/Profile 3/Cookies"
+database = "/home/ncx843@ds.mot.com/.config/google-chrome/Profile 3/Cookies"
 sql = 'SELECT name, encrypted_value FROM cookies WHERE host_key like "%%%s%%"' % sys.argv[1]
 
 with dbapi2.connect(database) as conn:
