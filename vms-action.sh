@@ -296,7 +296,7 @@ case $whatToDo in
 			echocolour "$printCmd"
 		fi
 
-		eval $cmd
+		eval $cmd 2>/tmp/vms-action-curl.log
 		;;
 	version)
 		__getVersion
