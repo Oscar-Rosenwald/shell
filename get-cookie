@@ -8,4 +8,74 @@ if [[ -z ${1+x} ]]; then
 	exit 1
 fi
 
-python3 ~/shell/get_cookie.py $1
+vmsUrl=$1
+cookieJar=/tmp/vms-cookie-jar
+bwSessionFile=/tmp/bw-session-id
+VMSFolderId=6ac9a94f-e94d-46f9-9f26-afbe00b25cc9 # ID of the BitWarden VMSs folder
+bwSessionId=$(cat $bwSessionFile)
+
+if [[ ! -f $bwSessionFile ]]; then
+	touch $bwSessionFile
+fi
+if [[ ! -f $cookieJar ]]; then
+	touch $cookieJar
+fi
+
+function __getVmsPassword() {
+	if [[ ! -z $bwSessionId ]]; then
+		password=$(bw list items --folderid $VMSFolderId --session $bwSessionId |
+					   jq '.[] | select(.login.uris != null) |
+					   	   select(.login.uris | any(.uri | match('"\"$vmsUrl\""'))) | .login.password' | head -1)
+
+		if [[ ! -z $password ]]; then
+			echo $password
+			return
+		fi
+
+		echocolour "Session ID failed. Maybe reauthenticate with BitWarden?"
+		exit 1
+	fi
+
+	echo -n "Not logged into BitWarden yet. Logging in..." >&2
+	bw logout 2>/dev/null
+	session=$(bw login cyril.saroch@motorolasolutions.com --raw)
+	if [[ -z $session ]]; then
+		echocolour "Couldn't get BitWarden session ID"
+		exit 1
+	fi
+
+	echo $session > $bwSessionFile
+	password=$(bw list items --folderid $VMSFolderId --session $bwSessionId |
+				   jq '.[] | select(.login.uris != null) |
+					   select(.login.uris | any(.uri | match('"\"$vmsUrl\""'))) | .login.password' | head -1)
+	echo $password
+}
+
+if ! grep -q $vmsUrl $cookieJar; then
+	echo -n "Cookie is not known yet. Attempting to get it using BitWarden..." >&2
+
+	vmsPassword=$(__getVmsPassword)
+	if [[ -z $vmsPassword ]]; then
+		echocolour "Couldn't get VMS password"
+		exit 1
+	fi
+
+	vmsUsername=$(bw list items --folderid $VMSFolderId --session $bwSessionId |
+					  jq '.[] | select(.login.uris != null) |
+					      select(.login.uris | any(.uri | match('"\"$vmsUrl\""'))) | .login.username' | head -1)
+	if [[ -z $vmsUsername ]]; then
+		echocolour "Couldn't get VMS username"
+		exit 1
+	fi
+
+	curl --cookie-jar $cookieJar https://$vmsUrl/api/v1/dologin -d '{"username":'"$vmsUsername"',"password":'"$vmsPassword"'}' 2>/tmp/get-cookie-log
+	echo "Done" >&2
+fi
+
+cookie=$(grep $vmsUrl $cookieJar | cut -d $'\t' -f 7)
+if [[ ! -z $cookie ]]; then
+	echo $cookie
+else
+	echocolour "Failed to get cookie from the cookie jar. Falling back on Chrome database."
+	python3 ~/shell/get_cookie.py $vmsUrl
+fi

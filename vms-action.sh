@@ -182,6 +182,7 @@ __fillVmsKubeConfig() {
 	arg=${1:-}
 
 	if [[ -z $context || -z $namespace ]]; then
+		echo -n "Finding VMS context and namespace..."
 		for cluster in ${clusters[*]}; do
 			column=$(kubectl get ingress --context=$cluster --all-namespaces -o wide | grep $vms || echo '' )
 			if [[ ! -z $column ]]; then
@@ -190,6 +191,7 @@ __fillVmsKubeConfig() {
 				break
 			fi
 		done
+		echo "Done"
 	fi
 
 	if [[ -z $context || -z $namespace ]]; then
@@ -198,11 +200,13 @@ __fillVmsKubeConfig() {
 	fi
 
 	if [[ -z $pod ]] || [[ ! -z $arg ]]; then
+		echo -n "Finding VMS pod name..."
 		g="-v"
 		[[ $arg = db ]] && g=''
 
 		depInternalName=$(kubectl --context=$context --namespace=$namespace get ingress | grep "$vms\." | cut -d ' ' -f 1)
 		pod=$(kubectl --context=$context --namespace=$namespace get pods | grep $depInternalName | grep $g '\-db-' | head -n 1 | cut -d ' ' -f 1)
+		echo "Done"
 	fi
 
 	if [[ -z $pod ]]; then
