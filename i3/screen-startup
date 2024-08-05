@@ -1,0 +1,6 @@
+#!/bin/bash
+
+if [[ $(xrandr | grep -w connected | wc -l) -gt 1 ]]; then
+	wc -l /tmp/trial >> /tmp/trial
+	xrandr --output $(xrandr | grep -w eDP | awk '{print $1}') --off
+fi
