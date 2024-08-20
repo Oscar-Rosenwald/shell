@@ -98,6 +98,8 @@ while [[ $# -gt 0 ]]; do
 					printHelp
 					exit 1
 				fi
+			elif [[ ! -z ${component:-} && $whatToDo = log && $1 =~ [0-9]+ ]]; then
+				tail=$1
 			else
 				component=$1
 			fi
