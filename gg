@@ -77,12 +77,16 @@ function open_file {
 }
 
 what="$1"
-where="${2:-go}"
+where="${2:-go/}"
 whereNoDir=""
 whereNoFile=""
 command=""
 
-shift 2
+if [[ $# -eq 1 ]]; then
+	shift 1
+else
+	shift 2
+fi
 
 fileMode="fileM" # From now on we're listing files to exclude
 dirMode="dirM" # From now on we're listing directories to exclude
