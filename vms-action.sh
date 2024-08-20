@@ -19,7 +19,6 @@ component            Log from this component and follow the log. Default is mgmt
 
 --curl <URL tail>... Run a curl command against the VMS. <URL tail> is what follows "/api/v1/". GET is default. PUT and POST require data WITHOUT BRACKETS!
 -v                   Run verbose. If not given, we run -i (which prints the response code).
--p                   Print the curl command. Note that you cannot pipe such an output to jq.
 
 --version            Returns the VMS version.
 -co                  Chceckout to the current version of the VMS. Must be in VAION_PATH.
@@ -45,7 +44,6 @@ curlData=
 curlMethod=
 curlTail=
 curlPrint='-w "cURL response: %{http_code}\n"'
-curlVerbose=false
 
 while [[ $# -gt 0 ]]; do
 	case $1 in
@@ -78,9 +76,6 @@ while [[ $# -gt 0 ]]; do
 			;;
 		-v)
 			curlPrint=-v
-			;;
-		-p)
-			curlVerbose=true
 			;;
 		-t)
 			tail=$2
@@ -292,10 +287,8 @@ case $whatToDo in
 			printCmd+=" -d '$curlData'"
 		fi
 
-		if [[ $curlVerbose = true ]]; then
-			echocolour "$printCmd"
-		fi
-
+		echocolour "$printCmd" >&2
+		echo "Curl logs in /tmp/vms-action-curl.log" >&2
 		eval $cmd 2>/tmp/vms-action-curl.log
 		;;
 	version)
