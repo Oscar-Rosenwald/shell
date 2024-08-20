@@ -77,6 +77,8 @@ function applyResolution() {
 	while read screenLine; do
 		screen=$(echo "$screenLine" | cut -d' ' -f 1)
 		resolution=$(echo "$screenLine" | cut -d' ' -f 3 | sed -e 's/\([^+]*\)\+.*/\1/')
+		# In case the line says "primary," we need to handle that
+		resolution2=$(echo "$screenLine" | cut -d' ' -f 4 | sed -e 's/\([^+]*\)\+.*/\1/')
 
 		case $screen in
 			eDP-1)
@@ -85,7 +87,7 @@ function applyResolution() {
 			;;
 			HDMI-1-0)
 				debug "Detected HDMI-1-0 screen with resolution $resolution"
-				if [[ $resolution = 3440x1440 ]]; then
+				if [[ $resolution = 3440x1440 || $resolution2 = 3440x1440 ]]; then
 					# This is the resolution of my Uxbridge screen.
 					debug "That is my work screen"
 					work=true
@@ -123,7 +125,7 @@ function applyResolution() {
 # Print base names of all available wallpapers. This strips all the
 # resolution-specific suffixes. The printed results are all unique.
 function iterateBaseFiles() {
-	ls -1 $pictureDir/*.png | xargs -n1 basename | sed "s/_\(Base\|Home\|Victoria\|Uxbridge\).png//" | uniq
+	ls -1 $pictureDir/*.png | xargs -n1 basename -s .png | sed "s/_\(Base\|Home\|Victoria\|Uxbridge\)//" | uniq
 }
 
 # Fill in custom probabilities if any exist
