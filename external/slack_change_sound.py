@@ -1,16 +1,18 @@
+#!/bin/python3
 import binascii
 import struct
 import sys
 import os
 
 
-
 def crc(d):
+    """Compute a 4-byte checksum of d."""
     return struct.pack("<I", binascii.crc32(d))
 
 
 def x(d):
-    return binascii.unhexlify(d.replace(" ",""))
+    """No spaces, please."""
+    return binascii.unhexlify(d.replace(" ", ""))
 
 
 if len(sys.argv) != 2:
@@ -18,50 +20,50 @@ if len(sys.argv) != 2:
     sys.exit(1)
 
 print("[-] Searching for Slack dir")
-dir_slack = None
-dir_1 = os.path.expanduser('~') + "/.config/Slack/Cache/Cache_Data"
-dir_2 = os.path.expanduser('~') + "/Library/Containers/com.tinyspeck.slackmacgap/Data/Library/Application Support/Slack/Cache/Cache_Data"
-is_dir_1_exists = os.path.exists(dir_1)
-if not is_dir_1_exists:
-    is_dir_2_exists = os.path.exists(dir_2)
-    if not is_dir_2_exists:
-        print("ERROR: NO ACTIVE SLACK DIR!")
+dir_slack = os.path.expanduser('~') + "/.config/Slack/Cache/Cache_Data"
+
+
+# Not used
+def find_slack_path() -> str:
+    """Something."""
+    print("[-] Searching for hummus sound cache file")
+
+    # import ipdb;ipdb.set_trace()
+    command_grep = os.popen("grep -ira hummus-200e354.mp3 \"{}\"".
+                            format(dir_slack) + "/*_s")
+
+    command_grep_output = command_grep.read()
+
+    if not command_grep_output or "matches" not in command_grep_output:
+        print("ERROR: No Hummus sound cache file! Go to " +
+              "Slack-->Preferences-->Notifications-->Select Hummus, " +
+              "then close Slack and try again")
         sys.exit(1)
-    else:
-        dir_slack = dir_2
-else:
-    dir_slack = dir_1
 
-print("[-] Slack dir found at '{}'".format(dir_slack))
-# print("[-] Searching for hummus sound cache file")
-
-# # import ipdb;ipdb.set_trace()
-# command_grep = os.popen("grep -ira hummus-200e354.mp3 \"{}\"".format(dir_slack) + "/*_s") # example: 13f007daa736b6cb_s
-
-# command_grep_output = command_grep.read()
-
-# if not command_grep_output or not "matches" in command_grep_output:
-#     print("ERROR: No Hummus sound cache file! Go to Slack-->Preferences-->Notifications-->Select Hummus, then close Slack and try again")
-#     sys.exit(1)
-
-# hummus_sound_cache_filename = command_grep_output.split("Cache_Data/")[1].split(" matches")[0]
-# hummus_sound_cache_filepath = dir_slack + "/" + hummus_sound_cache_filename
-# print("[-] Found hummus sound cache file '{}'".format(hummus_sound_cache_filename))
-hummus_sound_cache_filepath = os.path.expanduser('~') + '/.config/Slack/Cache/Cache_Data/5487d157ce0722de_s'
+    hummus_sound_cache_filename = command_grep_output.\
+        split("Cache_Data/")[1].split(" matches")[0]
+    hummus_sound_cache_filepath = dir_slack + "/" + hummus_sound_cache_filename
+    print("[-] Found hummus sound cache file '{}'".
+          format(hummus_sound_cache_filename))
+    return hummus_sound_cache_filepath
 
 
-# req_resource = "1/0/" + "https://a.slack-edge.com/bv1-9/hummus-200e354.mp3" # previous was bv1-9
-req_resource = "1/0/" + "https://a.slack-edge.com/bv1-13-br/hummus-200e354.mp3" # bv1-13 <--- looks like this number changes with updates..
+# Use this because the the function above has trouble parsing the binary files.
+hummus_sound_cache_filepath = dir_slack + "/e3d6a602201da2bc_s"
+
+# "bv1-13" in the string below: Looks like this number changes with updates..
+req_resource = "1/0/" + "https://a.slack-edge.com/bv1-13/hummus-200e354.mp3"
 new_sound_file = sys.argv[1]
 new_file_data = open(new_sound_file, "rb").read()
 print("[-] Overwriting cache file '{}' with '{}'".format(hummus_sound_cache_filepath, new_sound_file))
 
 
 new_cache_data = b""
-new_cache_data += x("30 5C 72 A7 1B 6D FB FC 09 00 00 00")      # magic
-new_cache_data += struct.pack("<I", len(req_resource))          # resource path len
-new_cache_data += crc(b"") + b"\x00\x00\x00\x00"                        # ?
-new_cache_data += req_resource.encode()                                         # requested resource
+new_cache_data += x("30 5C 72 A7 1B 6D FB FC 09 00 00 00")  # magic
+new_cache_data += struct.pack("<I", len(req_resource))      # resource path len
+# new_cache_data += crc(b"") + b"\x00\x00\x00\x00"            # ?
+new_cache_data += b"\xed\xe8\xd5\xf2\x00\x00\x00\x00"       # ?
+new_cache_data += req_resource.encode()                     # requested resource
 new_cache_data += x("6B 67 53 65 01 BF 97 EB 00 00 00 00 00 00 00 00") # magic ?
 print("len of sound file: {} (in binary {})".format(len(new_file_data), struct.pack("<I", len(new_file_data))))
 new_cache_data += struct.pack("<I", len(new_file_data)) + b"\x00\x00\x00\x00"           # resource len
