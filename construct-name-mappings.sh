@@ -86,6 +86,7 @@ function deSpace {
 	arg="${arg%"${arg##*[![:space:]]}"}"
 	arg="${arg// /_}"
 	arg="${arg//\//+}"
+	arg="${arg//\&/and}"
 	echo $arg
 }
 
@@ -108,8 +109,12 @@ while read CC; do
 	echo "$id:CC_$name" >> $targetFile
 done < <(sed -n "4,$((lineNumber_Cluster-2))p" $sourceFile)
 
-for dev in $(dirname $sourceFile)/devices/*.json; do
-	# Device UUIDs are left commented out by default on purpose, because too
-	# many IDs slow down the map-IDs.sh script.
-	echo "DEV_"$(deSpace $(cat $dev | jq '.Device | "# \(.guid):\(.name)"') | sed 's/"//g') >> $targetFile
-done
+devReg=$(dirname $sourceFile)/devices/*.json
+
+if ls -1 $(dirname $sourceFile)/devices | grep -q .*.json; then
+	for dev in $devReg; do
+		# Device UUIDs are left commented out by default on purpose, because too
+		# many IDs slow down the map-IDs.sh script.
+		echo "# "$(deSpace $(cat $dev | jq '.Device | "\(.guid):DEV_\(.name)"') | sed 's/"//g') >> $targetFile
+	done
+fi
