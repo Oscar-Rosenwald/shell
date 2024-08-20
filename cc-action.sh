@@ -124,6 +124,11 @@ fi
 nodeIp=$(get-cc-spec.sh -c $nodeName --get-ip $debug)
 password=$(get-cc-spec.sh -c $nodeName --get-password $debug)
 
+if [[ -z $nodeIp || -z $password ]]; then
+	echo "Failed to find CC specs: $nodeIp; $password" >&2
+	exit 1
+fi
+
 [[ $whatToDo = sh ]] && [[ $component = platform ]] && whatToDo=vplat
 [[ $whatToDo = reboot ]] && [[ -z ${component+x} ]] && component=platform
 
