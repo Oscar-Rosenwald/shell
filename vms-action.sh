@@ -274,7 +274,10 @@ case $whatToDo in
 	curl)
 		__fillVmsKubeConfig
 		url=$(__getVmsURL $vms)
-		cookie=$(get-cookie $url)
+		d=
+		[[ $debug = true ]] && d=--debug
+			
+		cookie=$(get-cookie $url $d)
 
 		if [[ $curlPrint != -v && $curlMethod = GET ]]; then
 			curlPrint=''

@@ -9,10 +9,14 @@ if [[ -z ${1+x} ]]; then
 fi
 
 vmsUrl=$1
+
+if [[ ${2:-} = --debug ]]; then
+	set -x
+fi
+
 cookieJar=/tmp/vms-cookie-jar
 bwSessionFile=/tmp/bw-session-id
-VMSFolderId=6ac9a94f-e94d-46f9-9f26-afbe00b25cc9 # ID of the BitWarden VMSs folder
-bwSessionId=$(cat $bwSessionFile)
+cookieLog=/tmp/get-cookie-log
 
 if [[ ! -f $bwSessionFile ]]; then
 	touch $bwSessionFile
@@ -20,6 +24,9 @@ fi
 if [[ ! -f $cookieJar ]]; then
 	touch $cookieJar
 fi
+
+bwSessionId=$(cat $bwSessionFile)
+VMSFolderId=6ac9a94f-e94d-46f9-9f26-afbe00b25cc9 # ID of the BitWarden VMSs folder
 
 function __getVmsPassword() {
 	if [[ ! -z $bwSessionId ]]; then
@@ -38,18 +45,29 @@ function __getVmsPassword() {
 
 	echo -n "Not logged into BitWarden yet. Logging in..." >&2
 	bw logout 2>/dev/null
-	session=$(bw login cyril.saroch@motorolasolutions.com --raw)
+	bwPassword=$(secret-tool lookup name Bit)
+	session=$(bw login cyril.saroch@motorolasolutions.com $bwPassword --raw)
 	if [[ -z $session ]]; then
 		echocolour "Couldn't get BitWarden session ID"
 		exit 1
 	fi
 
 	echo $session > $bwSessionFile
+	bwSessionId=$session		# This apparently doesn't update the variable globally.
+	echo -n "Getting VMS password..." >&2
 	password=$(bw list items --folderid $VMSFolderId --session $bwSessionId |
 				   jq '.[] | select(.login.uris != null) |
 					   select(.login.uris | any(.uri | match('"\"$vmsUrl\""'))) | .login.password' | head -1)
+	echo "Done" >&2
 	echo $password
 }
+
+cookie=`python3 ~/shell/get_cookie.py $vmsUrl 2>/tmp/get_cookie_python_log`
+if [[ ! -z $cookie ]]; then
+	echo "Found cookie in chrome database" >&2
+	echo $cookie
+	exit 0
+fi
 
 if ! grep -q $vmsUrl $cookieJar; then
 	echo -n "Cookie is not known yet. Attempting to get it using BitWarden..." >&2
@@ -60,6 +78,8 @@ if ! grep -q $vmsUrl $cookieJar; then
 		exit 1
 	fi
 
+	echo -n "Getting VMS password..." >&2
+	bwSessionId=$(cat $bwSessionFile) # Reload the value in case the file has changed.
 	vmsUsername=$(bw list items --folderid $VMSFolderId --session $bwSessionId |
 					  jq '.[] | select(.login.uris != null) |
 					      select(.login.uris | any(.uri | match('"\"$vmsUrl\""'))) | .login.username' | head -1)
@@ -68,14 +88,22 @@ if ! grep -q $vmsUrl $cookieJar; then
 		exit 1
 	fi
 
-	curl --cookie-jar $cookieJar https://$vmsUrl/api/v1/dologin -d '{"username":'"$vmsUsername"',"password":'"$vmsPassword"'}' 2>/tmp/get-cookie-log
+	echo "Logging in to $vmsUrl using CURL. Username: $vmsUsername; Password: $vmsPassword" > $cookieLog
+	curl --cookie-jar $cookieJar -v https://$vmsUrl/api/v1/dologin -d '{"username":'"$vmsUsername"',"password":'"$vmsPassword"'}' 2>>$cookieLog || true
 	echo "Done" >&2
 fi
 
-cookie=$(grep $vmsUrl $cookieJar | cut -d $'\t' -f 7)
+storedCookie=$(grep $vmsUrl $cookieJar)
+if [[ -z $storedCookie ]]; then
+	echo "Cookie not found! Is $vmsUrl an actual URL, or just the name of the VMS?" >&2
+	exit 1
+fi
+
+cookie=$(echo "$storedCookie" | cut -d $'\t' -f 7)
 if [[ ! -z $cookie ]]; then
+	echo "Found cookie in cookie jar" >&2
 	echo $cookie
 else
-	echocolour "Failed to get cookie from the cookie jar. Falling back on Chrome database."
-	python3 ~/shell/get_cookie.py $vmsUrl
+	echo "Did not find cookie. Don't know why." >&2
+	exit 1
 fi
