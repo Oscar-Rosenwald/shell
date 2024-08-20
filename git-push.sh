@@ -25,7 +25,7 @@ if [[ $? -eq 0 ]]; then
 	branches=~/Private/branches.csv
 	if grep -q "$OLD_BRANCH.*active" $branches; then
 		b -s pipeline
-	elif grep -q "$OLD_BRANCH.*free" $branches; then
+	elif grep -q "$OLD_BRANCH,free" $branches; then
 		read -p "What is the topic of this branch? " topic
 		b -s pipeline -t "$topic"
 	fi
