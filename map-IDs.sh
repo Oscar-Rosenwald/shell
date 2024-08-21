@@ -57,10 +57,10 @@ if [[ ! -z ${MAP_DEBUG:-} ]]; then
 	debug=true
 fi
 if [[ $reverse = true ]]; then
-	grep :$item$ $mapFile | cut -d':' -f 1
+	grep :$item$ $mapFile | cut -d':' -f 1 | sed 's/# //g'
 	exit 0	
 elif [[ ! -z $idOpt ]]; then
-	grep $idOpt.*: $mapFile | cut -d':' -f 2
+	grep $idOpt.*: $mapFile | cut -d':' -f 2 | sed 's/# //g'
 	exit 0
 fi
 

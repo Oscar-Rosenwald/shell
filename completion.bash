@@ -299,3 +299,36 @@ __map-IDs_completions()
 	fi
 }
 complete -F __map-IDs_completions map-IDs.sh
+
+__logs_completions()
+{
+	compopt +o default
+	lastWord=${COMP_WORDS[$COMP_CWORD]}
+	prevWord=${COMP_WORDS[$((COMP_CWORD-1))]}
+
+	if [[ $prevWord = id ]]; then
+		file=${COMP_WORDS[1]}
+		logdir="$(dirname "$(realpath $file)")"
+		while [[ ! -f "$logdir/download_info" && "$logdir" != / ]]; do
+			logdir="$(dirname "$logdir")"
+		done
+
+		downloadInfoFile="$logdir"/download_info
+		if [[ ! -f $downloadInfoFile ]]; then
+			COMPREPLY=($(compgen -W "in c --no-tail --debug" -- "$lastWord"))
+			return
+		fi
+
+		vmsName=$(sed -n '2p' "$downloadInfoFile")
+		vmsName=${vmsName/\/*/}
+
+		COMPREPLY=($(compgen -W "$(__getVmsIDs $vmsName)" -- "$lastWord"))
+	elif [[ $COMP_CWORD = 1 ]]; then
+		compopt -o default
+	elif [[ $prevWord = in ]]; then
+		COMPREPLY=($(compgen -W "id" -- "$lastWord"))
+	else
+		COMPREPLY=($(compgen -W "id in c --no-tail --no-map --debug" -- "$lastWord"))
+	fi
+}
+complete -F __logs_completions logs
