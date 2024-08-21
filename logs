@@ -9,12 +9,13 @@ if [[ $1 = -h ]]; then
 	echo -e "${RED}logs <file> [ c | in <regex> ] [--no-tail] [--debug]${NC}"
 	echo Give list of strings to exclude/include from the file.
 	echo
-	echo "c         -> toggle inclusion of colour. Default is to give coloured output. Using c once will disable it on strings going forward. Using c again will enable it for the following strings, and so on."
-	echo "in        -> include following file. Default is exclude."
-	echo "id        -> Give the 'name' of something whose ID you want to filter out (or in if the 'in' option precedes the 'id'), e.g. CC_Cloud"
+	echo "        c -> toggle inclusion of colour. Default is to give coloured output."
+    echo "             Using c once will disable it on strings going forward. Using c again will re-enable it and so on."
+	echo "       in -> include following file. Default is exclude."
+	echo "       id -> Give the 'name' of something whose ID you want to filter out (or in if the 'in' option precedes the 'id'), e.g. CC_Cloud"
 	echo "--no-tail -> Do not limit the output to any line number."
-	echo "--no-map  -> Do not map IDs onto names"
-	echo "--debug   -> Pass --debug to map-IDs.sh"
+	echo " --no-map -> Do not map IDs onto names"
+	echo "  --debug -> Pass --debug to map-IDs.sh"
 	exit 0
 fi
 
