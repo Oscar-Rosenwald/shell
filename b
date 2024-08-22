@@ -10,6 +10,9 @@ set -euo pipefail
 # - Long-term: Is continuously being used by a large task or a task long in approval
 
 file=~/Private/branches.csv
+# Denotes the VMS name to whose commit I checked out. Ignored if the current commit doesn't match the recorded commit.
+# Format: VMS-name,commit
+currentFile=~/Private/current-commit-vms
 options=("free" "reserved" "active" "pipeline" "long-term")
 currentBranch=$(git branch --list | grep "\*" | sed 's/\* //')
 whatToDo=listAll  # listAll / list / free / update / add
@@ -70,6 +73,24 @@ function __list {
 
 	branchSize=0
 	index=0
+	useCurrentBranch=false
+
+	# Add the current commit if we checked out a VMS version. Only do this if
+	# we're not asking for a specific branch (AKA when $file has more than one
+	# line), and when the cached commit matches the current commit.
+	if [[ -f $currentFile && $(cat $file | wc -l) -gt 1 ]]; then
+		line=$(cat $currentFile)
+		vmsName=$(echo $line | cut -d, -f 1)
+		commit=$(echo $line | cut -d, -f 2)
+		if [[ $commit = $(git rev-parse --short HEAD) ]]; then
+			branch[$index]=current
+			status[$index]=${RED}active${NC}
+			task[$index]="Check out VMS $vmsName"
+			branchSize=7
+			index=1
+			useCurrentBranch=true
+		fi
+	fi
 
 	while read line; do
 		branch[$index]=$(echo $line | cut -d , -f 1)
@@ -108,7 +129,7 @@ function __list {
 	for i in `seq 0 $index`; do
 		branch="${branch[$i]}"
 		tmpBranchSize="$branchSize"
-		if [[ "$branch" == "$currentBranch" ]]; then
+		if [[ $branch = current && $useCurrentBranch = true ]] || [[ "$branch" == "$currentBranch" ]]; then
 			branch="$PURPLE$branch$NC"
 			tmpBranchSize=$((branchSize+17))
 		fi

@@ -306,6 +306,8 @@ case $whatToDo in
 			exit 0
 		fi
 		git checkout $(__getVersion)
+		# Store the VMS name in the file that the script b understands.
+		echo "$vms,$(git rev-parse --short HEAD)" > ~/Private/current-commit-vms
 		;;
 
 	*)
