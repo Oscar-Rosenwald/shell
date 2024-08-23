@@ -87,12 +87,12 @@ while [[ $# -gt 0 ]]; do
 			shift 1
 			;;
 		*)
-			if [[ $nextIsInEntry = true ]]; then
+			if [[ $nextIsInEntry = false ]]; then
 				query+=" | grep -v \"$line\""
-				nextIsInEntry=false
 			else
 				in+=" | grep -i \"$line\""
 				inArray+=("$line")
+				nextIsInEntry=false
 			fi
 	esac
 	shift 1
