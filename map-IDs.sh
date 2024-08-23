@@ -3,8 +3,8 @@
 set -euo pipefail
 IFS=''
 
-CYAN='\033[0;36m'
-NC='\033[0m'
+CYAN=$'\033[0;36m'
+NC=$'\033[0m'
 
 # Load the cluster functions
 source ~/shell/cluster
@@ -84,26 +84,20 @@ if [[ -f $mapFile ]]; then
 	done < <(cat $mapFile)
 fi
 
-function applyMap {
-	# print="${@//\"/\\\"}"
-	print="${@//\'/\'\"\'\"\'}"
-	cmd="echo '$print'"
-
-	for id in ${!mappings[@]}; do
-		name=${mappings[$id]}
-		if [[ $debug = true ]]; then
-			echo "Mapping $id onto $name"
-		fi
-		
-		cmd+=" | sed -u ''/$id/s//"'`'"printf \"${CYAN}$name${NC}\""'`'"/g''"
-	done
-
+sedCommand=
+for id in ${!mappings[@]}; do
+	name=${mappings[$id]}
 	if [[ $debug = true ]]; then
-		echocolour "$cmd"
+		echo "Mapping $id onto $name"
 	fi
-	eval $cmd
-}
+
+	escapedName=$(echo "$name" | sed 's/[&/\]/\\&/g')
+	sedCommand+="s/$id/${CYAN}${escapedName}${NC}/g;"
+done
 
 while read -r line; do
-	applyMap "$line"
+	line="${line//\'/\'\"\'\"\'}"
+	[[ $debug = true ]] && set -x
+	sed -u -e "${sedCommand%;}"
+	set +x
 done
