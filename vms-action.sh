@@ -12,6 +12,7 @@ Perform commmon VMS actions.
 component            Log from this component and follow the log. Default is mgmt.
 -t                   Log this many lines. Default is 500.
 -l                   Don't follow the log, but display it in 'less' fashion.
+-f                   Don't follow, just print.
 
 -db                  Log into the database of the VMS.
 
@@ -71,8 +72,11 @@ while [[ $# -gt 0 ]]; do
 		--patch)
 			whatToDo=patch
 			;;
-		-l)
+		-f)
 			follow=false
+			;;
+		-l)
+			follow=less
 			;;
 		-v)
 			curlPrint=-v
@@ -260,7 +264,7 @@ case $whatToDo in
 		if [[ $mapFile != none ]]; then
 			cmd+=" | map-IDs.sh $vms"
 		fi
-		if [[ $follow = false ]]; then
+		if [[ $follow = less ]]; then
 			cmd+=" | less -rS"
 		fi
 
