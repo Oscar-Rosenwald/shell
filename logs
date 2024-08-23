@@ -13,6 +13,8 @@ if [[ $1 = -h ]]; then
     echo "             Using c once will disable it on strings going forward. Using c again will re-enable it and so on."
 	echo "       in -> include following file. Default is exclude."
 	echo "       id -> Give the 'name' of something whose ID you want to filter out (or in if the 'in' option precedes the 'id'), e.g. CC_Cloud"
+	echo "       -l -> Show all filtered output in a less way"
+	echo "       -L -> Show all filtered output in a less way, but scroll to the bottom"
 	echo "--no-tail -> Do not limit the output to any line number."
 	echo " --no-map -> Do not map IDs onto names"
 	echo "  --debug -> Pass --debug to map-IDs.sh"
@@ -29,6 +31,7 @@ declare -a inArray
 mappingDir=$MAPS
 colour=true
 noTail=false
+less=false
 noMap=false
 file=$1
 debug=
@@ -37,7 +40,6 @@ nextIsInEntry=false # If true, the next argument follows the "in" option.
 shift 1 # Exclusions from now on
 
 while [[ $# -gt 0 ]]; do
-	echo "DEBUG: ${debug}; Arguments: $@"
 	line="$1"
 	if [[ ! -z $debug ]]; then
 		echo "Adding option '$line' (which is an 'in' option: $nextIsInEntry)"
@@ -62,6 +64,12 @@ while [[ $# -gt 0 ]]; do
 			;;
 		--debug)
 			debug=--debug
+			;;
+		-l)
+			less=true
+			;;
+		-L)
+			less=fromEnd
 			;;
 		in)
 			[[ ! -z $debug ]] && echo "Next is an 'in' argument"
@@ -157,12 +165,18 @@ done
 
 command="cat $file $query $in"
 
-if [[ $noTail = false ]]; then
+if [[ $noTail = false && $less = false ]]; then
 	command+=" | tail -n 100"
 fi
 
 if [[ $noMap = false ]]; then
 	command+=" | map-IDs.sh $vmsName $debug"
+fi
+
+if [[ $less = true ]]; then
+	command+=" | less -R"
+elif [[ $less = fromEnd ]]; then
+	command+=" | less -R +G"
 fi
 
 newCmd="${command//$CYAN//}"
