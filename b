@@ -9,10 +9,10 @@ set -euo pipefail
 # - Pipeline: Task is pushed, but not merged
 # - Long-term: Is continuously being used by a large task or a task long in approval
 
-file=~/Private/branches.csv
+file=~/Private/cache/branches.csv
 # Denotes the VMS name to whose commit I checked out. Ignored if the current commit doesn't match the recorded commit.
 # Format: VMS-name,commit
-currentFile=~/Private/current-commit-vms
+currentFile=~/Private/cache/current-commit-vms
 options=("free" "reserved" "active" "pipeline" "long-term")
 currentBranch=$(git branch --list | grep "\*" | sed 's/\* //')
 whatToDo=listAll  # listAll / list / free / update / add
