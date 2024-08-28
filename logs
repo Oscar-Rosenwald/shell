@@ -6,19 +6,23 @@ NC='\033[0m'
 set -euo pipefail
 
 if [[ $1 = -h ]]; then
-	echo -e "${RED}logs <file> [ c | in <regex> ] [--no-tail] [--debug]${NC}"
-	echo Give list of strings to exclude/include from the file.
-	echo
-	echo "        c -> toggle inclusion of colour. Default is to give coloured output."
-    echo "             Using c once will disable it on strings going forward. Using c again will re-enable it and so on."
-	echo "       in -> include following file. Default is exclude."
-	echo "       id -> Give the 'name' of something whose ID you want to filter out (or in if the 'in' option precedes the 'id'), e.g. CC_Cloud"
-	echo "       -l -> Show all filtered output in a less way"
-	echo "       -L -> Show all filtered output in a less way, but scroll to the bottom"
-	echo "--no-tail -> Do not limit the output to any line number."
-	echo " --no-map -> Do not map IDs onto names"
-	echo "  --debug -> Pass --debug to map-IDs.sh"
-	exit 0
+	cat <<EOF
+
+	e "${RED}logs <file> [ c | in <regex> ] [--no-tail] [--debug]${NC}"
+    Give list of strings to exclude/include from the file.
+
+            c -> toggle inclusion of colour. Default is to give coloured output.
+                 Using c once will disable it on strings going forward. Using c again will re-enable it and so on.
+            h -> Show first 100 lines rather than last 100 lines.
+           in -> include following file. Default is exclude.
+           id -> Give the 'name' of something whose ID you want to filter out (or in if the 'in' option precedes the 'id'), e.g. CC_Cloud.
+           -l -> Show all filtered output in a less way.
+           -L -> Show all filtered output in a less way, but scroll to the bottom.
+    --no-tail -> Do not limit the output to any line number.
+     --no-map -> Do not map IDs onto names.
+      --debug -> Pass --debug to map-IDs.sh.
+EOF
+    exit 0
 fi
 
 query=""
@@ -33,6 +37,7 @@ colour=true
 noTail=false
 less=false
 noMap=false
+firstLast=tail
 file=$1
 debug=
 
@@ -55,6 +60,9 @@ while [[ $# -gt 0 ]]; do
 			else
 				colour=true
 			fi
+			;;
+		h)
+			firstLast=head
 			;;
 		--no-map)
 			noMap=true
@@ -155,6 +163,13 @@ for id in "${idInArray[@]}"; do
 	inArray+=("$idName")
 done
 
+# This is done so we can grep on things we grepped on before. If we grepped like this:
+# 
+#   grep --color=always "ahoj zdar" | grep "zdar cau"
+#   
+# Then there would be no results, because the first grep introduces colour to the end of
+# the word 'zdar', and the second grep isn't counting on it. Therefore we need to grep
+# first without colour, and then hope for the best when colour is introduced.
 echo "Re-grepping ${inArray[@]}"
 for g in "${inArray[@]}"; do
 	in+=" | grep -i '$g'"
@@ -166,7 +181,7 @@ done
 command="cat $file $query $in"
 
 if [[ $noTail = false && $less = false ]]; then
-	command+=" | tail -n 100"
+	command+=" | $firstLast -n 100"
 fi
 
 if [[ $noMap = false ]]; then
