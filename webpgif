@@ -1,0 +1,35 @@
+#!/bin/bash
+
+dow=~/Dowloads/
+best=~/not\ public/just\ the\ best/
+#ls "$dow"*.gif
+
+function webpgif {
+	number=$(sudo ls "$best" | grep .*\.gif | sort -n | tail -n 1 | cut -d '.' -f 1)
+	number=$((number + 1))
+	while ! [[ "$number" =~ ^[0-9]+$ ]]
+	do
+		echo "I need a number"
+		read number
+	done
+	for f in ~/Downloads/*.gif
+	do
+			 name=$(echo "$f" | cut -d '.' -f 1)
+			 if [ -f "$name.webp" ]
+			 then
+				 rm "$name.webp"
+				 sudo mv -i "$f" "$best$number.gif"
+				 number=$((number + 1))
+			 else
+				 echo "Do you wish to move $f? (yes/no) "
+				 read answer
+				 if [ "$answer" = "yes" ]
+				 then
+					 sudo mv -i "$f" "$best$number.gif"
+					 number=$((number + 1))
+				 else
+					 echo "Skipping..."
+				 fi
+			 fi
+	done
+}

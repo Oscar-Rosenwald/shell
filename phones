@@ -1,0 +1,6 @@
+#!/bin/bash
+function phones {
+    bluetoothctl <<EOF
+connect 88:D0:39:58:D8:F0
+EOF
+}

@@ -1,0 +1,73 @@
+#!/bin/bash
+FILM_FILE=~/Documents/Code/movieList/.filmList
+FILM=""
+
+function writeFilm {
+	echo "\
+Enter description: "
+	read DESCRIPT
+	echo "\
+Markers? [red = 1-5; blue; ENTER = nothing] "
+	read MARKERS
+	if [ "$MARKERS" != "" ]; then
+		MARKERS="MARKERS: $MARKERS"
+	fi
+	echo "##$FILM##$DESCRIPT $MARKERS#" >> $FILM_FILE
+}
+
+function readFilm {
+	num=$1
+	line=$( head -n $num $FILM_FILE | tail -n 1 )
+	if echo $line | grep -q "MARKERS"; then
+		echo $line | sed -r 's/(#*)([^#]*)(#*)(.*)( MARKERS: )(.*)#/\2\n\4\n\6\n/'
+	else
+		echo $line | sed -r 's/(#*)([^#]*)(#*)(.*)#/\2\n\4\n/'
+	fi
+}
+
+function readYesNo {
+	prompt=$1
+	func=$2
+
+	read -p "$prompt (yes/no) " input
+	while [[ "$input" != "yes" ]] && [[ "$input" != "no" ]]; do
+		read -p "Wrong input. Try again. (yes/no) " input
+	done
+
+	if [[ "$input" = "yes" ]]; then
+		$func
+	fi
+}
+
+function filmList() {
+	while true; do
+		echo "Insert line number (with # before it), \"??\" for max, or film name"
+		read FILM
+		echo "\
+====================================================="
+
+		if [ "$FILM" = "??" ]; then
+			# Number of films
+			num=$(wc -l $FILM_FILE | cut -d' ' -f 6) # 6 was tried experimentally. There are spacese at the start of the returned line
+			echo "$num films in the list"
+			echo
+
+		elif [[ $FILM =~ ^\#[0-9]+$ ]]; then
+			# Search Nth film
+			readFilm ${FILM:1}
+		else
+			# Read or insert film
+			LINE=$( grep -in "^#.*\b$FILM\b.*##" $FILM_FILE )
+
+			if [ "$LINE" != "" ]; then
+				echo $LINE | sed -r 's/ *([^#]*)##([^#]*)##([^#]*)#/\1\n\2\n\3\n---------------------\n/g' | sed 's/ MARKERS: /\n/g'
+				readYesNo "Insert even if exists?" writeFilm
+			else
+				# Create new film entry?
+				readYesNo "Film $FILM is not on the list. Create?" writeFilm
+			fi
+
+			echo
+		fi
+	done
+}

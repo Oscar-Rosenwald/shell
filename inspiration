@@ -1,0 +1,19 @@
+#!/bin/bash
+
+best=~/not\ public/just\ the\ best/
+
+function inspiration {
+    while true; do
+	uBound=$(sudo ls -1 "$best" | wc -l) # Read the number of files - read upper bound
+	fileNum=$((1 + $RANDOM % $uBound))		 # Select the index of the file to open
+	file=$(sudo ls -1 "$best" | head -n $fileNum | tail -n 1)
+	sudo find "$best" -name "$file" -exec cp {} ~/Desktop/ \;
+	gio open ~/Desktop/"$file"
+	echo "To go on press ENTER; to stop press n, then ENTER."
+	read blank
+        rm -f ~/Desktop/"$file"
+        if [ "$blank" = "n" ]; then
+            return 1
+        fi
+    done
+}
