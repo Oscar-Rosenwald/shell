@@ -5,7 +5,7 @@
 
 export MAPS=~/Private/cache/mappings
 export CCs=~/Private/cache/CCs
-export SHELL_DIR=~/shell-all/merged
+export SHELL_DIR=~/shell
 export COMMON_DIR=$SHELL_DIR/common
 export WORK_DIR=$SHELL_DIR/work
 export HOME_DIR=$SHELL_DIR/home
