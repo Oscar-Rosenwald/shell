@@ -52,7 +52,7 @@ if [[ -z "$user" ]]; then
 fi
 
 function patch {
-	build-docker-component.sh $component
+	$UTILS_DIR/build-docker-component.sh $component
 
 	file="/tmp/${component}_image.tgz"
 	tag="bazel/go/vms/$component:${component}_image"

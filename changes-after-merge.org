@@ -1,0 +1,6 @@
+* TODO updir (from home) -> updir_func (from work)
+* TODO some stuff from home moved to home/
+* TODO some stuff from home moved to common/
+- [ ] case_sensitive
+- [ ] completion.bash
+- [ ] echocolour

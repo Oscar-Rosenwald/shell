@@ -6,9 +6,6 @@ IFS=''
 CYAN=$'\033[0;36m'
 NC=$'\033[0m'
 
-# Load the cluster functions
-source $SHELL_DIR/cluster
-
 function printHelp {
 	cat <<EOF
 $(basename $1) VMS-name [--debug] [--reverse name | --lookup id]

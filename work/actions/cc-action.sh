@@ -182,10 +182,10 @@ case $whatToDo in
 		;;
 	patch)
 		echo "cc-patch.sh $nodeIp $component -p $password"
-		cc-patch.sh $nodeIp $component -p $password
+		$UTILS_DIR/cc-patch.sh $nodeIp $component -p $password
 		;;
 	vplat)
-		awssh $nodeIp -p $password
+		$UTILS_DIR/awssh $nodeIp -p $password
 		;;
 	reboot)
 		if [[ $component = platform ]]; then

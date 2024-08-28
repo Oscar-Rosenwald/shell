@@ -5,8 +5,6 @@ IFS=$'\n\t'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-source $SHELL_DIR/cluster
-
 function printHelp {
 	cat<<EOF
 $0 [OPT: node|file|cc-name] [OPT: component] [ANY_ORDER: -run|-file|-cc] [ANY_ORDER: -l] [ANY_RODER: --map|-m <vms-name> | --no-map ] [REST]
