@@ -62,7 +62,7 @@ function __getVmsPassword() {
 	echo $password
 }
 
-cookie=`python3 ~/shell/get_cookie.py $vmsUrl 2>/tmp/get_cookie_python_log`
+cookie=`python3 $SHELL_DIR/get_cookie.py $vmsUrl 2>/tmp/get_cookie_python_log`
 if [[ ! -z $cookie ]]; then
 	echo "Found cookie in chrome database" >&2
 	echo $cookie

@@ -7,7 +7,7 @@ CYAN=$'\033[0;36m'
 NC=$'\033[0m'
 
 # Load the cluster functions
-source ~/shell/cluster
+source $SHELL_DIR/cluster
 
 function printHelp {
 	cat <<EOF
