@@ -1,0 +1,160 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+IFT=$'\n\t'
+
+RED='\033[0;31m'
+NC='\033[0m' # No Color
+
+searchText="$1"
+searchDir=
+declare -a excludeDir
+declare -a excludeFile
+declare -a includeFile
+
+# Handle the second argument (not) being a directory
+if [[ $# -ge 2 ]]; then
+	if [[ ! -d $2 ]]; then
+		shift 1
+		searchDir=go/
+	else
+		searchDir="$2"
+		shift 2
+	fi
+fi
+
+# Argument-reading modes
+fileMode=fileM # next arguments are files to exclude
+dirMode=dirM # next arguments are directories to exclude
+includeMode=inM # next argument (one) is a file pattern to include
+currentMode=$dirMode
+lastMode=
+
+# Which files and directories to include by default?
+useTest=false
+useQuery=false
+usePubsub=false
+useReplication=false
+
+# Extra grep and viewing options
+recursive="-r"
+ignoreCase="-i"
+maxLines=50
+useLess=false
+useColour=true
+openInteractively=false
+
+while [[ "$#" -gt 0 ]]; do
+	opt=$1
+	shift 1
+	
+	if [[ $opt = --debug ]]; then
+		debug=true
+		continue
+	elif [[ "$opt" = "f" ]]; then # f = not file
+		currentMode=$fileMode
+	elif [[ "$opt" = "d" ]]; then # d = not directory
+		currentMode=$dirMode
+	elif [[ $opt = in ]]; then # in = include next file
+		lastMode=$currentMode # After including a pattern we'll be returning to the current mode. Save it.
+		currentMode=$includeMode
+	elif [[ "$opt" = "r" ]]; then # r = not recursive
+		recursive=""
+		continue
+	elif [[ "$opt" = "i" ]]; then # i = case sensitive
+		ignoreCase=""
+		continue
+	elif [[ "$opt" = "c" ]]; then # c = no colour
+		useColour=false
+		continue
+	elif [[ "$opt" = "t" ]]; then # t = use test
+		useTest=true
+		continue
+	elif [[ "$opt" = "q" ]]; then # q = use mgmt_query
+		useQuery=true
+		continue
+	elif [[ "$opt" = "p" ]]; then # p = use pubsub
+		usePubsub=true
+		continue
+	elif [[ "$opt" = "o" ]]; then # o = open found files by prompt
+		openInteractively=true
+		continue
+	elif [[ "$opt" = "R" ]]; then # R = use dbreplication
+		useReplication=true
+		continue
+	elif [[ $opt = l ]]; then # l = show output in the 'less' way
+		useLess=true
+		continue
+	elif [[ "$opt" = "L" ]]; then # L = set max interactive lines
+		maxLines="$2"
+		continue
+	elif [[ "$opt" = "a" ]]; then # a = use all
+		useTest=true
+		useQuery=true
+		usePubsub=true
+		useReplication=true
+		continue
+	elif [[ "$opt" = "-h" ]]; then
+		show_help
+		exit 0
+	elif [[ "$opt" = "-" ]]; then # - = done, rest are different arguments
+		break
+	fi
+
+	shift 1
+	case $currentMode in
+		$fileMode)
+			excludeFile+=("$1")
+			;;
+		$dirMode)
+			excludeDir+=("$1")
+			;;
+		$includeMode)
+			includeFile+=("$1")
+			# It is safe to assume only one pattern will be explicitly included,
+			# so we can immediately go back to the previous mode.
+			currentMode=$lastMode
+			;;
+		*)
+			echo "Unknown mode $currentMode" >&2
+			exit 1
+			;;
+	esac
+done
+
+declare -A occurances
+key=0
+
+excludedFiles=
+excludedDirs=
+
+for file in ${excludeFile[@]}; do
+	excludedFiles+="--exclude=$file "
+done
+for dir in ${excludeDir[@]}; do
+	excludedDirs+=",$dir"
+done
+
+if [[ $useTest = false ]]; then
+	excludedFiles+="--exclude=*test.go"
+	excludedDirs+=",tests"
+fi
+if [[ $useQuery = false ]]; then
+	excludedDirs+=",mgmt_query"
+fi
+if [[ $usePubsub = false ]]; then
+	excludedDirs+=",mgmt_pubsub,cloud_pubsub"
+fi
+if [[ $useReplication = false ]]; then
+	excludedDirs+=",dbreplication"
+fi
+
+command="grep $ignoreCase -n $recursive -e \"$searchText\" $searchDir/* $@ $excludedFiles --exclude-dir={$excludedDirs}"
+echocolour $command
+
+while read line; do
+	key=$((key+1))
+	occurances[$key]="$line"
+done < <(eval $command)
+
+# TODO This is very much not done
