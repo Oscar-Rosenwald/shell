@@ -37,6 +37,7 @@ haMode=false
 less=false
 debug=
 mapFile=
+component=
 
 while [[ "$#" -gt 0 ]]; do
 	case "$1" in
@@ -89,6 +90,8 @@ while [[ "$#" -gt 0 ]]; do
 		*)
 			if [[ -z "$nodeName" ]]; then
 				nodeName="$1"
+			elif [[ $whatToDo = log && $1 =~ ^[0-9]+$ ]] && [[ ! -z $component ]]; then
+				lines=$1
 			elif [[ "$whatToDo" = log ]] || [[ $whatToDo = sh ]] || [[ $whatToDo = patch ]] || [[ $whatToDo = reboot ]]; then
 				component="$1"
 			elif ([[ $whatToDo = db ]] || [[ $whatToDo = nodb ]]) && [[ $1 =~ ^[0-9]+$ ]]; then

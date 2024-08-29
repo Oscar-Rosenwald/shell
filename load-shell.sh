@@ -11,11 +11,21 @@ export COMMON_DIR=$SHELL_DIR/common
 export WORK_DIR=$SHELL_DIR/work
 export HOME_DIR=$SHELL_DIR/home
 export UTILS_DIR=$WORK_DIR/utils
+export WORK_COMPUTER=
 
+if [[ $(whoami) = ncx843 ]]; then
+	WORK_COMPUTER=true
+fi
+
+# Load common scripts
 [[ -f $COMMON_DIR/updir_func ]] && . $COMMON_DIR/updir_func
 [[ -f $COMMON_DIR/completion.bash ]] && . $COMMON_DIR/completion.bash
-[[ -f $WORK_DIR/resiliency_functions ]] && . $WORK_DIR/resiliency_functions
-[[ -f $WORK_DIR/cluster ]] && . $WORK_DIR/cluster
+
+# Load computer-specific scipts.
+if [[ $WORK_COMPUTER = true ]]; then
+	[[ -f $WORK_DIR/resiliency_functions ]] && . $WORK_DIR/resiliency_functions
+	[[ -f $WORK_DIR/cluster ]] && . $WORK_DIR/cluster
+fi
 
 function addDirToPath() {
 	topLevelDir=$1
@@ -31,4 +41,9 @@ function addDirToPath() {
 }
 
 addDirToPath $SHELL_DIR
-source $SHELL_DIR/common-functions.sh
+
+if [[ $WORK_COMPUTER = true ]]; then
+	source $SHELL_DIR/common-work-functions.sh
+else
+	source $SHELL_DIR/common-home-functions.sh
+fi
