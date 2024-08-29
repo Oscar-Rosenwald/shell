@@ -23,7 +23,7 @@ function addDirToPath() {
 		# contains scripts which are only called by other scripts, and we
 		# therefore don't want them to clutter up completion.
 		if [[ -d $fileOrDir && $(realpath $fileOrDir) != $WORK_DIR/utils ]]; then
-			PATH="$PATH:$topLevelDir/"
+			PATH="$PATH:$fileOrDir"
 			addDirToPath $fileOrDir
 		fi
 	done
