@@ -3,8 +3,9 @@
 # This script loads all variables, functions, and completions from the shell
 # repository. Use `source <this-file>` in your .bashrc.
 
-export MAPS=~/Private/cache/mappings
-export CCs=~/Private/cache/CCs
+export PRIVATE_DIR=~/Private/
+export MAPS=$PRIVATE_DIR/cache/mappings
+export CCs=$PRIVATE_DIR/cache/CCs
 export SHELL_DIR=~/shell
 export COMMON_DIR=$SHELL_DIR/common
 export WORK_DIR=$SHELL_DIR/work
