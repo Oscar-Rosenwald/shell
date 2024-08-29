@@ -75,14 +75,15 @@ complete -F _branch_completions b # execute after every 'branch' request
 
 _analyse_logs_completions()
 {
-	wholeIndex=${#COMP_WORDS[@]}
-	checkIndex=$((wholeIndex-2))
-	index=$((wholeIndex-1))
+	prevIndex=$((COMP_CWORD-1))
+	prevWord=${COMP_WORDS[$prevIndex]}
+	currentIndex=$COMP_CWORD
+	currentWord=${COMP_WORDS[$currentIndex]}
 
-	if [[ "${COMP_WORDS[$checkIndex]}" = "-f" ]]; then
-		COMPREPLY=($(compgen -W "$(ls)" -- "${COMP_WORDS[$index]}"))
-	elif [[ "${COMP_WORDS[$checkIndex]}" = "-w" ]]; then
-		COMPREPLY=($(compgen -W "restarts panics start end first current both full" -- "${COMP_WORDS[$index]}"))
+	if [[ $prevWord = "-f" ]] || [[ $currentIndex = 1 ]]; then
+		COMPREPLY=($(compgen -W "$(ls)" -- $currentWord))
+	elif [[ -f $prevWord ]] || [[ $prevWord = "-w" ]]; then
+		COMPREPLY=($(compgen -W "restarts panics start end first current both full" -- $currentWord))
 	fi
 }
 

@@ -15,7 +15,7 @@ full=${options[7]}
 
 show_help () {
 	cat <<EOF
-$0 [-f file name] [-w what to show] [-s|--simple]
+$0 <file-name> <-w what-to-show> [-s|--simple]
 
 Default file name is mgmt.txt in current directory.
 What to show can be:
@@ -32,7 +32,7 @@ Version options will warn if there is only one version in the file.
 
 Default is "how many restarts".
 
-Option -s, when give, only returns the relevant numbers, and doens't print any more information.
+Option -s, when give, only returns the relevant numbers, and doesn't print any more information.
 EOF
 }
 
@@ -94,6 +94,15 @@ count_panics () {
 file=./mgmt.txt
 what=$restarts
 simple=false
+
+if [[ -f $1 ]]; then
+	file=$1
+	shift 1
+fi
+if [[ "${options[@]}" =~ $1 ]]; then
+	what=$1
+	shift 1
+fi
 
 # Parse values
 while [[ "$#" -gt 0 ]]; do
