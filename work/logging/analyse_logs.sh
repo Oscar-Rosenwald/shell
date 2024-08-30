@@ -94,15 +94,11 @@ count_panics () {
 file=./mgmt.txt
 what=$restarts
 simple=false
+arg=${1:-x}
 
-if [[ -f $1 ]]; then
-	file=$1
-	shift 1
-fi
-if [[ "${options[@]}" =~ $1 ]]; then
-	what=$1
-	shift 1
-fi
+[[ $COMPONENTS =~ $arg ]] && arg=$arg.txt
+[[ -f $arg ]] && file=$arg && shift 1
+[[ "${options[@]}" =~ ${1:-x} ]] && what=$1 && shift 1
 
 # Parse values
 while [[ "$#" -gt 0 ]]; do
