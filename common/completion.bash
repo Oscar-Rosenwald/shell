@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 
-components=("mgmt" "db" "access" "norm" "streamer" "ui" "authenticator" "store" "router")
-vmses=("v-cloud" "tom-not-tom-2" "feature-cc-resiliency-be" "feature-cc-resiliency" "hybrid-cloud-test")
 mappingsDir=$MAPS
 _passwordFile=$CCs
+components=($COMPONENTS)
 
 function _getCcNames {
 	if [[ ${1:-} = proper ]]; then
@@ -71,7 +70,7 @@ _branch_completions()
 		fi
 	fi
 }
-complete -F _branch_completions b # execute after every 'branch' request
+complete -F _branch_completions b
 
 _analyse_logs_completions()
 {
@@ -80,14 +79,20 @@ _analyse_logs_completions()
 	currentIndex=$COMP_CWORD
 	currentWord=${COMP_WORDS[$currentIndex]}
 
-	if [[ $prevWord = "-f" ]] || [[ $currentIndex = 1 ]]; then
+	options=("restarts" "panics" "start" "end" "first" "current" "both" "full")
+	if [[ $currentIndex = 1 ]]; then
+		COMPREPLY=($(compgen -W "-w ${components[*]} ${options[*]}" -- $currentWord))
+	elif [[ $prevWord = "-f" ]]; then
 		COMPREPLY=($(compgen -W "$(ls)" -- $currentWord))
 	elif [[ -f $prevWord ]] || [[ $prevWord = "-w" ]]; then
-		COMPREPLY=($(compgen -W "restarts panics start end first current both full" -- $currentWord))
+		COMPREPLY=($(compgen -W "${options[*]}" -- $currentWord))
+	elif [[ "${components[@]}" =~ $prevWord ]]; then
+		COMPREPLY=($(compgen -W "${options[*]} -w" -- $currentWord))
 	fi
 }
 
 complete -F _analyse_logs_completions analyse_logs.sh
+complete -F _analyse_logs_completions anlog # For the alias
 
 __cc-action_completions()
 {
@@ -100,7 +105,7 @@ __cc-action_completions()
 
 	[[ $COMP_CWORD = 1 ]] && COMPREPLY=($(compgen -W "$(_getCcNames)" -- "$lastWord")) && return
 
-	case $prevWord in
+	case $prevOption in
 		--detail)
 			# This mode does nothing else, so it allows no other arguments
 			COMPREPLY=()
@@ -111,6 +116,9 @@ __cc-action_completions()
 			;;
 		-t)
 			# Tail number
+			COMPREPLY=()
+			;;
+		-v)
 			COMPREPLY=()
 			;;
 		-sh|--patch)

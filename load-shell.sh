@@ -12,9 +12,11 @@ export WORK_DIR=$SHELL_DIR/work
 export HOME_DIR=$SHELL_DIR/home
 export UTILS_DIR=$WORK_DIR/utils
 export WORK_COMPUTER=
+export COMPONENTS=
 
 if [[ $(whoami) = ncx843 ]]; then
 	WORK_COMPUTER=true
+	COMPONENTS="mgmt db access norm streamer ui authenticator store router"
 fi
 
 # Load common scripts
