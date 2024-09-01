@@ -174,7 +174,9 @@ __vms-action_completions()
 	lastWord=${COMP_WORDS[COMP_CWORD]} # Last word before the cursor, even if it isn't finished
 
 	if [[ $COMP_CWORD = 1 ]]; then
-		COMPREPLY=($(compgen -W "$(__getVmsNames)" -- "$lastWord"))
+		COMPREPLY=($(compgen -W "$(__getVmsNames) --channel --git-channel" -- "$lastWord"))
+	elif [[ $prevOption = --channel || $prevOption = --git-channel ]]; then
+		COMPREPLY=($(compgen -W "beta beta_candidate stable stable_candiate test test_candidate latest delayed" -- $lastWord))
 	elif [[ $prevOption = --patch ]]; then
 		COMPREPLY=($(compgen -W "${components[*]}" -- "$lastWord"))
 	elif [[ $prevOption = -t ]] || [[ $prevOption = -c ]] || [[ $prevOption = -n ]] || [[ $prevOption = --curl ]]; then

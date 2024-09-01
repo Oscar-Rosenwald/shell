@@ -5,7 +5,7 @@ IFS=$'\n\t'
 
 printHelp() {
 cat <<EOF
-$0 <vms-name> [ <component> [-t num] [-l] | -db | --patch <component> | --curl <URL tail> [delete | put/post '<data>'] [-v] [-p] | --version | -co ] [--no-map]
+$0 <vms-name> [ <component> [-t num] [-l] | -db | --patch <component> | --curl <URL tail> [delete | put/post '<data>'] [-v] [-p] | --version | -co | --channel <channel-name> | --git-channel <channel-name> [ -- <filter> ] ] [--no-map]
 
 Perform commmon VMS actions.
 
@@ -23,6 +23,8 @@ component            Log from this component and follow the log. Default is mgmt
 
 --version            Returns the VMS version.
 -co                  Chceckout to the current version of the VMS. Must be in VAION_PATH.
+--channel <name>     Get current version tag of the upgrade channel from the DMP.
+--git-channel <name> Like --channel, but displays the git log for that version. Can add -- <filter> to pass to git log.
 
 --debug              Turn on debugging.
 
@@ -46,6 +48,9 @@ curlMethod=
 curlTail=
 curlPrint='-w "cURL response: %{http_code}\n"'
 
+channelGitLog=false
+gitAdditional=
+
 while [[ $# -gt 0 ]]; do
 	case $1 in
 		--debug)
@@ -65,6 +70,23 @@ while [[ $# -gt 0 ]]; do
 			;;
 		--version)
 			whatToDo=version
+			;;
+		--git-channel)
+			whatToDo=channel
+			channel=$2
+			channelGitLog=true
+			shift 1
+
+			if [[ ${2:-} = -- ]]; then
+				shift 2
+				gitAdditional="$@"
+				break
+			fi
+			;;
+		--channel)
+			whatToDo=channel
+			channel=$2
+			shift 1
 			;;
 		--no-map)
 			mapFile=none
@@ -239,6 +261,17 @@ __getVmsURL() {
 	kubectl get ingress ${pod/-0/} --context=$context --namespace=$namespace -o wide | tail -n 1 | cut -d' ' -f 7
 }
 
+__getChannelVersion() {
+	logFile=/tmp/channelCurl.log
+	echo "logs in $logFile" >&2
+	version=$(curl https://beta.dmp.alta.avigilon.com/api/v1/upgradeManifest?channel=$channel 2>$logFile | jq '.manifest.version' | sed 's/"//g')
+	if [[ $channelGitLog = true ]]; then
+		git log $version $gitAdditional
+	else
+		echo $version
+	fi
+}
+
 case $whatToDo in
 	db)
 		__fillVmsKubeConfig db
@@ -303,7 +336,9 @@ case $whatToDo in
 	version)
 		__getVersion
 		;;
-
+	channel)
+		__getChannelVersion
+		;;
 	checkout)
 		if ! diff --brief . $VAION_PATH; then
 			echo "You must be in $VAION_PATH for this" >&2
