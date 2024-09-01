@@ -343,3 +343,4 @@ __logs_completions()
 	fi
 }
 complete -F __logs_completions logs
+complete -F __logs_completions lg

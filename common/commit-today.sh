@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+# TODO This probably doesn't work as well as you think.
+
 set -euo pipefail
 IFS=$'\n\t'
 
