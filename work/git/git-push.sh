@@ -22,7 +22,7 @@ echocolour $cmd
 eval $cmd
 
 if [[ $? -eq 0 ]]; then
-	branches=$PRIVATE_DIR/branches.csv
+	branches=$PRIVATE_DIR/cache/branches.csv
 	if grep -q "$OLD_BRANCH.*active" $branches; then
 		b -s pipeline
 	elif grep -q "$OLD_BRANCH,free" $branches; then
